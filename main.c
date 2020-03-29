@@ -9,74 +9,94 @@ Explicação
 Obrigado!
 */
 #include "Structs_n_main.h"
-#include "interface_n_aux.h"
-#include "Network.h"
+#include "interface.h"
+#include "network.h"
+#include <unistd.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <stdbool.h>
+
+//for debug
+#include <stdio.h>
 
 
-int main(int argc, char * argv[])
+fd_set sock_set;
+struct timeval* timeout;
+struct info my_info;
+
+
+int main(int argc, char* argv[])
 {
-  int menu = 0;
-  all_info * server;
+  int maxfd = 0;
+  int fd_udp;
+  char buff[10];
 
-  server = MemoryAlloc();
-  server = startup(argc, argv, server);
+  //Verifies input
+  startup(argc, argv);
+  my_info.key = -1;
+  my_info.inRing = false;
+  
+  timeout = NULL;
 
-  while(menu != -1)
-  {
-    //Mostra as opções que estao no menu e recolhe a escolhida na
-    //variavel de entrada
-    //system("clear");
-    Display_main_menu();
-    menu = get_option();
+  Display_menu();
 
-    switch (menu)
-    {
-        case 1:
-            if(server->inRing == false)
-            {
-              server=Choose_key(server);
-              server->inRing = true;
-              server = NewServer_Heart(server);
-            }
-            else
-            {
-              printf("Server already in ring\nChoose another option\n");
-            }
-            //TCP_Server_Connect(MyCloset);
+  //Main program loop :D
+  while(1){
+  	FD_ZERO(&sock_set);//needs to be reset every iteration
+  	FD_SET(STDIN_FILENO, &sock_set);
+  	maxfd = max(maxfd, STDIN_FILENO);
 
-        break;
+  	//only after being in the ring
+  	if(my_info.inRing == true){ 
+  		FD_SET(fd_udp, &sock_set);
+  		maxfd = max(maxfd, fd_udp);
+  	}
 
-        case 2:
+  	//FD_SET TCP
+  	//FD_SET TCP
+  	select(maxfd+1, &sock_set, (fd_set*) NULL, (fd_set*) NULL, timeout);
 
-        break;
+	 	//For user input
+		if(FD_ISSET(STDIN_FILENO, &sock_set)){
+			switch (get_option()){
+      //NEW i
+      /*Be the 1st server in a new ring with key "i"*/
+    		case 1:
+      		if(my_info.inRing == false){
+        		my_info.key = new_i();
+        		my_info.inRing = true;
+        		  //Inicia servidor udp
+  					fd_udp=init_UDPsv(argv);
+      		}
+      		else      
+        		print("Server already in ring\nChoose another option\n");
+    		break;
+    		case 2:  //ENTRY i
+    		break;
+    		case 3:
+    		break;
+    		case 4:
+    		break;
+    		case 5:
+    		break;
+    		case 6:
+    		break;
+    		case 7:
+    		break;
+  		}
+		}
 
-        case 3:
-
-        break;
-
-        case 4:
-          //Faz cenas
-        break;
-
-        case 5:
-
-        break;
-
-        case 6:
-
-        break;
-
-        case 7:
-          menu = -1;
-        break;
-    }
-
-
-  }
-
-  printf("It was a pleasure, son\n");
-
-  free(server);
-
+		//For UDP message received
+		if (FD_ISSET(fd_udp, &sock_set))
+		{
+			//usado para testar, dps vai fora
+			recvfrom(fd_udp, buff, 7, 0, NULL, NULL);
+			printf("%s\n", buff);
+		}
+	}
   return 0;
 }

@@ -8,7 +8,9 @@
 //Retirar este quando juntar ao Programa
 #include <stdio.h>
 #include <string.h>
-#define PORT "2200"
+#define PORT "2000"
+
+
 
 
 int main(void)
@@ -21,34 +23,27 @@ int main(void)
   char buffer[128];
   const char *hostIP = "127.0.0.1";
 
-
-  fd=socket(AF_INET,SOCK_STREAM,0);
+  fd=socket(AF_INET,SOCK_DGRAM,0);
   if (fd==-1) exit(1); //error
   memset(&hints,0,sizeof hints);
   hints.ai_family=AF_INET;
-  hints.ai_socktype=SOCK_STREAM;
-  hints.ai_protocol=IPPROTO_TCP;
-//TCP socket
+  hints.ai_socktype=SOCK_DGRAM;
+//UDP socket
 //IPv4
-//TCP socket
-errcode= getaddrinfo (hostIP,PORT,&hints,&res);
+//UDP socket
+errcode= getaddrinfo (NULL,"5000",&hints,&res);
 if(errcode!=0)/*error*/
-  exit(1);
+  printf("merdaaaaa\n");
+
+printf("hao\n");
+
+if(connect(fd, res->ai_addr,res->ai_addrlen))
+  printf("n ligou");
 
 
-n= connect (fd,res->ai_addr,res->ai_addrlen);
-if(n==-1)/*error*/exit(1);
+n=sendto(fd,"Hello!\n",7,0,res->ai_addr,res->ai_addrlen);
 
 
-write (fd,"Hello!\n",7);
-if(n==-1)/*error*/exit(1);
-
-n= read (fd,buffer,128);
-
-if(n==-1)/*error*/ exit(1);
-
-write(1,"echo: ",6);
-write(1,buffer,n);
 
 
 freeaddrinfo(res);
