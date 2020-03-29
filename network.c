@@ -1,35 +1,36 @@
 #include "network.h"
 #include "interface.h"
+#include "structs_n_main.h"
 //debug
 #include <stdio.h>
 
-void startup(int argc, char* argv[]){
+void startup(int argc, char* argv[], all_info *server){
 
   if (argc != 3)
     exit(0);
 
-  if(atoi(argv[2]) <= 1023 || atoi(argv[2]) > 64000)
+  else if(atoi(argv[2]) <= 1023 || atoi(argv[2]) > 64000)
   {
     print("The port must be a number between 1024 and 64000\n");
     exit(0);
   }
+  strcpy(server->Myinfo.port, argv[2]);
+  strcpy(server->Myinfo.IP, argv[1]);
+  server->key=-1;
+  server->inRing = false;
 }
 
 
-int init_UDPsv(char** IP_PORT){
+int init_UDPsv(all_info* server){
   int sockfd,n;
   struct addrinfo hints, *res;
-
   sockfd = socket(AF_INET, SOCK_DGRAM, 0); //UDP SOCKET
-
   memset(&hints,0,sizeof hints);
   hints.ai_family=AF_INET;
   hints.ai_socktype=SOCK_DGRAM;
   hints.ai_flags=AI_PASSIVE;
-
   //1st parameter "127.0.0.1" for loopback,change to IP_PORT[1] for network use
-  getaddrinfo(NULL, IP_PORT[2], &hints, &res);
-
+  getaddrinfo(server->Myinfo.IP, server->Myinfo.port, &hints, &res);
   //binded
   n=bind(sockfd, res->ai_addr, res->ai_addrlen);
   if (n==-1)

@@ -8,7 +8,7 @@ João Marques
 Explicação
 Obrigado!
 */
-#include "Structs_n_main.h"
+#include "structs_n_main.h"
 #include "interface.h"
 #include "network.h"
 #include <unistd.h>
@@ -24,21 +24,23 @@ Obrigado!
 #include <stdio.h>
 
 
-fd_set sock_set;
-struct timeval* timeout;
-struct info my_info;
+
+
+
 
 
 int main(int argc, char* argv[])
 {
   int maxfd = 0;
-  int fd_udp;
+  int fd_udp, fd_tcp_next, fd_tcp_prev;
   char buff[10];
+  struct timeval* timeout;
+  fd_set sock_set;
+  all_info server;
+
 
   //Verifies input
-  startup(argc, argv);
-  my_info.key = -1;
-  my_info.inRing = false;
+  startup(argc, argv, &server);
   
   timeout = NULL;
 
@@ -50,8 +52,8 @@ int main(int argc, char* argv[])
   	FD_SET(STDIN_FILENO, &sock_set);
   	maxfd = max(maxfd, STDIN_FILENO);
 
-  	//only after being in the ring
-  	if(my_info.inRing == true){ 
+  	//only after being in the ring udp fd is set
+  	if(server.inRing == true){ 
   		FD_SET(fd_udp, &sock_set);
   		maxfd = max(maxfd, fd_udp);
   	}
@@ -66,11 +68,11 @@ int main(int argc, char* argv[])
       //NEW i
       /*Be the 1st server in a new ring with key "i"*/
     		case 1:
-      		if(my_info.inRing == false){
-        		my_info.key = new_i();
-        		my_info.inRing = true;
+      		if(server.inRing == false){
+        		server.key = new_i();
+        		server.inRing = true;
         		  //Inicia servidor udp
-  					fd_udp=init_UDPsv(argv);
+  					fd_udp=init_UDPsv(&server);
       		}
       		else      
         		print("Server already in ring\nChoose another option\n");

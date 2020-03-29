@@ -18,8 +18,8 @@ OBJECTS = main.o interface.o network.o
 dkt: $(OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $(OBJECTS)
 
-main.o:  main.c Structs_n_main.h interface.h network.h
-network.o: network.c network.h #Structs_n_main.h 
+main.o:  main.c structs_n_main.h interface.h network.h
+network.o: network.c network.h structs_n_main.h 
 interface.o: interface.c interface.h #network.h
 
 

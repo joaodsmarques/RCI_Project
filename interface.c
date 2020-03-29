@@ -1,5 +1,5 @@
 #include "interface.h"
-#include "Structs_n_main.h"
+#include "structs_n_main.h"
 #include <stdio.h>
 #include <stdbool.h>
 
@@ -39,7 +39,6 @@ int new_i(){
     if(key < 0)
       printf("key must be greater than 0\n");
   }while (sscanf(buffer,"%d", &key) != 1 ||  key < 0);
-  printf("%d\n", key);
   return key;
 }
 

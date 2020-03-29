@@ -1,7 +1,7 @@
 #ifndef NETWORK
 #define NETWORK
 
-#include "Structs_n_main.h"
+#include "structs_n_main.h"
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -10,8 +10,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-void startup(int, char**);
-int init_UDPsv(char**);
+void startup(int, char**, all_info*);
+int init_UDPsv(all_info*);
 
 void TCP_Server_Connect(char*, char*);
 

@@ -8,7 +8,7 @@
 //Retirar este quando juntar ao Programa
 #include <stdio.h>
 #include <string.h>
-#define PORT "2000"
+#define PORT "50000"
 
 
 
@@ -31,7 +31,7 @@ int main(void)
 //UDP socket
 //IPv4
 //UDP socket
-errcode= getaddrinfo (NULL,"5000",&hints,&res);
+errcode= getaddrinfo (NULL,PORT,&hints,&res);
 if(errcode!=0)/*error*/
   printf("merdaaaaa\n");
 
