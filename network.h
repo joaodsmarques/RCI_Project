@@ -12,7 +12,7 @@
 
 void startup(int, char**, all_info*);
 int init_UDPsv(all_info*);
-
+void init_UDPcl(all_info*);
 void TCP_Server_Connect(char*, char*);
 
 

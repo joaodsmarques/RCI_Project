@@ -33,13 +33,9 @@ int main(void)
 //UDP socket
 errcode= getaddrinfo (NULL,PORT,&hints,&res);
 if(errcode!=0)/*error*/
-  printf("merdaaaaa\n");
-
-printf("hao\n");
+  exit(1);
 
 if(connect(fd, res->ai_addr,res->ai_addrlen))
-  printf("n ligou");
-
 
 n=sendto(fd,"Hello!\n",7,0,res->ai_addr,res->ai_addrlen);
 

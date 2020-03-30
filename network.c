@@ -3,7 +3,7 @@
 #include "structs_n_main.h"
 //debug
 #include <stdio.h>
-
+#define PORT "50000"
 void startup(int argc, char* argv[], all_info *server){
 
   if (argc != 3)
@@ -43,7 +43,27 @@ int init_UDPsv(all_info* server){
   return sockfd;
 }
 
+void init_UDPcl(all_info* sv_info){
+  int fd, errcode;
+  struct addrinfo hints, *res;
 
+  fd=socket(AF_INET, SOCK_DGRAM, 0);
+  if(fd==-1)
+    exit(1);
+  memset(&hints,0,sizeof hints);
+  hints.ai_family=AF_INET;
+  hints.ai_socktype=SOCK_DGRAM;
+
+  errcode=getaddrinfo(sv_info->Next_info.IP, sv_info->Next_info.port, &hints, &res);
+  if(errcode!=0)/*error*/
+  exit(1);
+  //sendto(fd,msg,42,0, res->ai_addr, res->ai_addrlen);
+  //recvfrom();
+
+
+  freeaddrinfo(res);
+  close(fd);
+}
 
 
 

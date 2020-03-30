@@ -27,9 +27,8 @@ Obrigado!
 int main(int argc, char* argv[])
 {
   int maxfd = 0;
-  int a=0;
   int fd_udp=-1, fd_tcp_next, fd_tcp_prev;
-  char buff[10];
+  char buff[42];
   struct timeval* timeout;
   fd_set sock_set;
   all_info server;
@@ -62,10 +61,10 @@ int main(int argc, char* argv[])
       //NEW i
       /*Be the 1st server in a new ring with key "i"*/
     		case 1:
-      		if(server.inRing == false){
+      		if(!server.inRing){
         		server.key = new_i();
-        		server.inRing = true;
   					fd_udp=init_UDPsv(&server);
+            server.inRing = true;
       		}
           clrscreen();
           Display_menu();
@@ -73,6 +72,14 @@ int main(int argc, char* argv[])
     		case 2:  //ENTRY i
     		break;
     		case 3:
+          if(!server.inRing){
+            sentry(&server);
+            fd_udp=init_UDPsv(&server);
+            init_UDPcl(&server);
+            server.inRing = true;
+          }
+            clrscreen();
+            Display_menu();
     		break;
     		case 4:
     		break;
@@ -93,7 +100,7 @@ int main(int argc, char* argv[])
 		if(server.inRing && FD_ISSET(fd_udp, &sock_set))
 		{
 			//usado para testar, dps vai fora
-			recvfrom(fd_udp, buff, 7, 0, NULL, NULL);
+			recvfrom(fd_udp, buff, 42, 0, NULL, NULL);
 			printf("%s\n", buff);
 		}
 	}
