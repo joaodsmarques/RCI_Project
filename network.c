@@ -14,8 +14,12 @@ void startup(int argc, char* argv[], all_info *server){
     print("The port must be a number between 1024 and 64000\n");
     exit(0);
   }
-  strcpy(server->Myinfo.port, argv[2]);
   strcpy(server->Myinfo.IP, argv[1]);
+  strcpy(server->Myinfo.port, argv[2]);
+  strcpy(server->Next_info.IP, argv[1]);
+  strcpy(server->Next_info.port, argv[2]);
+  strcpy(server->SecondNext_info.IP, argv[1]);
+  strcpy(server->SecondNext_info.port, argv[2]);
   server->key=-1;
   server->inRing = false;
 }

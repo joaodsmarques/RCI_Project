@@ -2,6 +2,7 @@
 #include "structs_n_main.h"
 #include <stdio.h>
 #include <stdbool.h>
+#include <strings.h>
 
 void print(const char* msg){
   printf("%s\n", msg);
@@ -22,10 +23,13 @@ void Display_menu(){
 int get_option(){
   int option = 0;
   char buffer[VETOR_SIZE];
-  do{
-    fgets(buffer, VETOR_SIZE, stdin);
-  }while (sscanf(buffer,"%d", &option) != 1 || option < 1 || option > 7);
-  return option;
+  if(!fgets(buffer, VETOR_SIZE, stdin))
+    exit(0);
+  sscanf(buffer,"%d", &option);
+  if(option > 0 && option < 8)
+    return option;
+  else
+    return -1;
 }
 
 int new_i(){
@@ -40,5 +44,29 @@ int new_i(){
       printf("key must be greater than 0\n");
   }while (sscanf(buffer,"%d", &key) != 1 ||  key < 0);
   return key;
+}
+
+void show(all_info sv_info){
+  printf("\n\n=========== SERVER STATUS ===========\n");
+  if(sv_info.inRing == false){
+    printf("Status: DOWN\n");
+    printf("Server IP: %s:%s\n", sv_info.Myinfo.IP, sv_info.Myinfo.port);
+    printf("=====================================\n");
+    printf("press enter to continue\n");
+    return;
+  }
+  printf("Status: OPERATIONAL\n");
+  printf("Server IP: %s:%s\n", sv_info.Myinfo.IP, sv_info.Myinfo.port);
+  printf("Server key: %d\n", sv_info.key);
+  if(strcmp(sv_info.Next_info.IP, sv_info.Myinfo.IP))
+    printf("Connected to %s:%s  key: %d\n", sv_info.Next_info.IP, sv_info.Next_info.port, sv_info.succ_key);
+  if(strcmp(sv_info.SecondNext_info.IP, sv_info.Myinfo.IP))
+    printf("Second next server: %s:%s\n", sv_info.SecondNext_info.IP, sv_info.SecondNext_info.port);
+  printf("===================================\n");
+  printf("press enter to continue\n");
+}
+
+void clrscreen(){
+  printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
 }
 

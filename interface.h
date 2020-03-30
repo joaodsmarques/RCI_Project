@@ -5,14 +5,12 @@
 #include <stdlib.h>
 
 
-
+void clrscreen();
 void Display_menu();
 void print(const char*);
 int get_option();
 int new_i();
-
-
-
+void show(all_info);
 
 
 #endif // INTERFACE_H_INCLUDED

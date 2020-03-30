@@ -24,15 +24,11 @@ Obrigado!
 #include <stdio.h>
 
 
-
-
-
-
-
 int main(int argc, char* argv[])
 {
   int maxfd = 0;
-  int fd_udp, fd_tcp_next, fd_tcp_prev;
+  int a=0;
+  int fd_udp=-1, fd_tcp_next, fd_tcp_prev;
   char buff[10];
   struct timeval* timeout;
   fd_set sock_set;
@@ -57,11 +53,9 @@ int main(int argc, char* argv[])
   		FD_SET(fd_udp, &sock_set);
   		maxfd = max(maxfd, fd_udp);
   	}
-
   	//FD_SET TCP
   	//FD_SET TCP
   	select(maxfd+1, &sock_set, (fd_set*) NULL, (fd_set*) NULL, timeout);
-
 	 	//For user input
 		if(FD_ISSET(STDIN_FILENO, &sock_set)){
 			switch (get_option()){
@@ -71,11 +65,10 @@ int main(int argc, char* argv[])
       		if(server.inRing == false){
         		server.key = new_i();
         		server.inRing = true;
-        		  //Inicia servidor udp
   					fd_udp=init_UDPsv(&server);
       		}
-      		else      
-        		print("Server already in ring\nChoose another option\n");
+          clrscreen();
+          Display_menu();
     		break;
     		case 2:  //ENTRY i
     		break;
@@ -83,17 +76,21 @@ int main(int argc, char* argv[])
     		break;
     		case 4:
     		break;
-    		case 5:
+    		case 5: //SHOW
+          show(server);
     		break;
     		case 6:
     		break;
     		case 7:
+          exit(0);
     		break;
+        default:
+        clrscreen();
+        Display_menu();         
   		}
 		}
-
 		//For UDP message received
-		if (FD_ISSET(fd_udp, &sock_set))
+		if(server.inRing && FD_ISSET(fd_udp, &sock_set))
 		{
 			//usado para testar, dps vai fora
 			recvfrom(fd_udp, buff, 7, 0, NULL, NULL);
