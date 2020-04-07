@@ -7,7 +7,7 @@
 #include <stdbool.h>
 
 #define IP_SIZE 20
-#define VETOR_SIZE 100
+#define VETOR_SIZE 128
 #define PORT_SIZE 10
 
 //Macro for Maximum between 2 numbers
@@ -40,5 +40,17 @@ typedef struct
   //Flag that indicates if we are in the ring
   bool inRing;
 }all_info;
+
+typedef struct ringfd
+{
+  //Fd relative to the predecessor
+  int pre;
+  //Fd for the successor
+  int next;
+  //Fd for usp connection
+  int udp;
+  //Fd listenning all the time
+  int listen;
+}ringfd;
 
 #endif // STRUCTS_N_MAIN_H_INCLUDED

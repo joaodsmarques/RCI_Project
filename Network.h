@@ -12,11 +12,18 @@
 #include <netdb.h>
 
 
-//void TCP_Server_Connect(Closet *);
-
 int init_UDPsv(all_info* );
 
-all_info* NewServer_Heart(all_info* );
+/*all_info* NewServer_Heart(all_info* );
 
+all_info* SentryServer_Heart(all_info*);*/
+
+int init_TCP_listen (char[]);
+
+int TCP_InitnConect(char [], char []);
+
+ringfd Sentry_Startup(all_info**);
+
+all_info* Server_Heart(all_info*, int , ringfd);
 
 #endif // TCP_H_INCLUDED

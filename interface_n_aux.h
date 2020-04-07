@@ -15,5 +15,10 @@ all_info* MemoryAlloc();
 
 all_info* Choose_key(all_info*);
 
+all_info* Message_Analysis (char [], all_info*, int);
+
+void ServerState(all_info* _server);
+
+all_info* StartSucci(all_info* );
 
 #endif // INTERFACE_H_INCLUDED
