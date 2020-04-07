@@ -41,7 +41,7 @@ int main(int argc, char* argv[])
 
   Display_menu();
 
-  //Main program loop :D
+  //Main program loop
   while(1){
   	FD_ZERO(&sock_set);//needs to be reset every iteration
   	FD_SET(STDIN_FILENO, &sock_set);
@@ -70,16 +70,17 @@ int main(int argc, char* argv[])
           Display_menu();
     		break;
     		case 2:  //ENTRY i
+          
     		break;
     		case 3:
-          if(!server.inRing){
+          /*if(!server.inRing){
             sentry(&server);
             fd_udp=init_UDPsv(&server);
             init_UDPcl(&server);
             server.inRing = true;
           }
             clrscreen();
-            Display_menu();
+            Display_menu();*/
     		break;
     		case 4:
     		break;

@@ -10,7 +10,8 @@ void Display_menu();
 void print(const char*);
 int get_option();
 int new_i();
-void sentry(all_info*);
+void entry_i();
+//void sentry(all_info*);
 void show(all_info);
 
 

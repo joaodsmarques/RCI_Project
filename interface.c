@@ -47,7 +47,7 @@ int new_i(){
   return key;
 }
 
-void sentry(all_info* sv_info){
+/*void sentry(all_info* sv_info){
   char buffer[VETOR_SIZE];
   sv_info->key=new_i();
   
@@ -59,6 +59,24 @@ void sentry(all_info* sv_info){
   if(!fgets(sv_info->Next_info.IP, IP_SIZE, stdin))
     exit(0);
   printf("Enter successor Port:\n");
+  if(!fgets(sv_info->Next_info.port, PORT_SIZE, stdin))
+    exit(0);
+  strtok(sv_info->Next_info.IP, "\n");
+  strtok(sv_info->Next_info.port, "\n");
+}*/
+
+void entry_i(all_info* sv_info){
+  char buffer[VETOR_SIZE];
+  sv_info->key=new_i();
+  
+  printf("Enter your key:\n");
+  if(!fgets(buffer, VETOR_SIZE, stdin))
+    exit(0);
+  sscanf(buffer,"%d", &(sv_info->key));
+  printf("Enter recving IP:\n");
+  if(!fgets(sv_info->Next_info.IP, IP_SIZE, stdin))
+    exit(0);
+  printf("Enter recving Port:\n");
   if(!fgets(sv_info->Next_info.port, PORT_SIZE, stdin))
     exit(0);
   strtok(sv_info->Next_info.IP, "\n");
