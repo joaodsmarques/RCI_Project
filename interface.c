@@ -56,13 +56,14 @@ void sentry(all_info* sv_info){
     exit(0);
   sscanf(buffer,"%d", &(sv_info->succ_key));
   printf("Enter successor IP:\n");
-  if(!fgets(sv_info->Next_info.IP, IP_SIZE, stdin))
+  if(!fgets(buffer, IP_SIZE, stdin))
     exit(0);
+  strcpy(sv_info->Next_info.IP,strtok(buffer, "\n"));
+
   printf("Enter successor Port:\n");
-  if(!fgets(sv_info->Next_info.port, PORT_SIZE, stdin))
+  if(!fgets(buffer, PORT_SIZE, stdin))
     exit(0);
-  strtok(sv_info->Next_info.IP, "\n");
-  strtok(sv_info->Next_info.port, "\n");
+  strcpy(sv_info->Next_info.port,strtok(buffer, "\n"));
 }
 
 void entry_i(all_info* sv_info){
@@ -79,8 +80,6 @@ void entry_i(all_info* sv_info){
   printf("Enter recving Port:\n");
   if(!fgets(sv_info->Next_info.port, PORT_SIZE, stdin))
     exit(0);
-  strtok(sv_info->Next_info.IP, "\n");
-  strtok(sv_info->Next_info.port, "\n");
 }
 
 void show(all_info sv_info){
@@ -107,3 +106,52 @@ void clrscreen(){
   printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
 }
 
+int message_analysis(char* msg, const char* expected){
+  char *aux;
+
+  aux = strtok(msg," ");
+
+  if(!strcmp(aux,expected))
+    return 1;
+  else
+    return 0;
+}
+
+void mystrcat(char* result,char* first,char* secnd,char* thrd,char* fourth,char* fifth){
+  strcpy(result, first);
+  strcat(result, " ");
+  strcat(result, secnd);
+  strcat(result, " ");
+  strcat(result, thrd);
+  strcat(result, " ");
+  strcat(result, fourth);
+  if (fifth != NULL)
+  {
+    strcat(result, " ");
+    strcat(result, fifth);
+  }
+  strcat(result,"\n");
+}
+
+void create_msg(char* msg, all_info sv_info, const char* type){
+  char key[12];
+  msg[0]='\0';
+  if (!strcmp(type, "SUCC"))
+  {
+    sprintf(key,"%d",sv_info.succ_key);
+    mystrcat(msg, "SUCC", key , sv_info.Next_info.IP, sv_info.Next_info.port, NULL);
+  }
+  else if(!strcmp(type, "NEW"))
+  {
+    
+  }
+}
+
+
+void parse_new(char* msg, server_info* server, int* key){
+  strtok(msg," ");
+  *key = atoi(strtok(NULL, " "));
+  strcpy(server->IP, strtok(NULL," "));
+  strcpy(server->port, strtok(NULL," "));
+  return;
+}

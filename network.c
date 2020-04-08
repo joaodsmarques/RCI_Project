@@ -4,6 +4,7 @@
 #include <fcntl.h>
 //debug
 #include <stdio.h>
+#include <strings.h>
 #define PORT "50000"
 void startup(int argc, char* argv[], all_info *server){
 
@@ -50,6 +51,11 @@ int add_fd(fd_set* read_set, fd_set* write_set, ringfd active_fd){
     FD_SET(active_fd.prev, write_set);
     max_fd = max(max_fd,active_fd.prev);
   }
+  if (active_fd.temp){
+    FD_SET(active_fd.temp, read_set);
+    FD_SET(active_fd.temp, write_set);
+    max_fd = max(max_fd,active_fd.temp);
+  }
   return max_fd;
 }
 
@@ -67,8 +73,10 @@ int init_UDPsv(all_info* server){
   getaddrinfo(server->Myinfo.IP, server->Myinfo.port, &hints, &res);
   //binded
   n=bind(sockfd, res->ai_addr, res->ai_addrlen);
-  if (n==-1)
+  if (n==-1){
+    printf("error UDP\n");
     exit(1);
+  }
   freeaddrinfo(res);
   return sockfd;
 }
@@ -80,8 +88,10 @@ int init_TCPsv(all_info* server)
   fd=socket(AF_INET,SOCK_STREAM,0);
   fcntl(fd, F_SETFL, O_NONBLOCK);
 
-  if (fd==-1)
+  if (fd==-1){
+    printf("error TCPsv\n");
     exit(1); //error
+  }
 
   memset(&hints,0,sizeof hints);
   hints.ai_family=AF_INET;//IPv4
@@ -129,55 +139,76 @@ int init_TCPcl(all_info* sv_info){
   struct addrinfo hints,*res;
 
   fd=socket(AF_INET,SOCK_STREAM,0);
-  fcntl(fd, F_SETFL, O_NONBLOCK);
+  //fcntl(fd, F_SETFL, O_NONBLOCK);
 
-  if (fd==-1)
+  if (fd==-1){
     exit(1); //error
-
+  }
   memset(&hints,0,sizeof hints);
   hints.ai_family=AF_INET;//TCP socket
   hints.ai_socktype=SOCK_STREAM;//IPv4
   hints.ai_protocol=IPPROTO_TCP;//TCP socket
 
-  errcode= getaddrinfo (sv_info->Next_info.IP, sv_info->Next_info.port , &hints, &res);
-  if(errcode!=0)
+  errcode= getaddrinfo (sv_info->Next_info.IP, sv_info->Next_info.port, &hints, &res);
+  if(errcode!=0){
     exit(1);//error
-
-  n= connect (fd,res->ai_addr,res->ai_addrlen);
+  }
+  n=connect(fd,res->ai_addr,res->ai_addrlen);
+  printf("trying to connected\n");
 
   if(n==-1){
-    printf("could not connect\n");
-    exit(1);//error
+    printf("erro connect\n");
+    exit(1);  
   }
   freeaddrinfo(res);
   return fd;
 }
 
-void send_request(int fd, const char* msg){
+void send_message(int fd, const char* msg){
   int n;
-  n=write(fd, msg, 9);
+  n=write(fd, msg, strlen(msg));
   if(n==-1){
     printf("write error\n");
     exit(1);//error
   }
+  printf("sent %s\n", msg);
 }
 
 int get_incoming(int fd){
   int fd_aux;
 
-  if((fd_aux = accept(fd, NULL, NULL)) != -1)
+  if((fd_aux = accept(fd, NULL, NULL)) != -1){
+    printf("connected\n");
     return fd_aux;
+  }
   else
     return 0;
 }
 
-int get_message(int fd, int prev){
-  char buffer[20];
+int get_message(int fd, const char* expected, char* msg){
+  char buffer[50];
   size_t nbytes = sizeof(buffer);
   ssize_t bytes_read;
-
-  bytes_read = read(fd, buffer, nbytes);
   
+  printf("getmessage\n");
+  bytes_read = read(fd, buffer, nbytes);
+  if(bytes_read == -1)
+    printf("didnt read shit, erro\n");
+
+  else if(bytes_read == 0){
+    printf("n ha nada para ler porra\n");
+    return 0;
+  }
+  else{
+    strcpy(buffer, strtok(buffer,"\n"));
+    printf("read: %s\n", buffer);
+    if (msg!=NULL)
+    {
+      msg[0]='\0';
+      strcpy(msg,buffer);
+    }
+  }
+  return message_analysis(buffer, expected);
 }
 
 

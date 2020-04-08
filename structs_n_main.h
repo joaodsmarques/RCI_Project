@@ -40,14 +40,14 @@ typedef struct
   server_info Myinfo;
   //Next server ID
   server_info Next_info;
-  //Previous server ID
-  server_info Prev_info;
   //Next server next's ID (2º Next server ID)
   server_info SecondNext_info;
   //Server number
   int key;
   //Next Server key
   int succ_key;
+  
+  int second_succ_key;
   //Flag that indicates if we are in the ring
   bool inRing;
 }all_info;

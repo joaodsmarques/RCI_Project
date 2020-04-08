@@ -16,9 +16,9 @@ int init_UDPsv(all_info*);
 void init_UDPcl(all_info*);
 int init_TCPsv(all_info*);
 int init_TCPcl(all_info*);
-void send_request(int, const char*);
+void send_message(int, const char*);
 int get_incoming(int);
-int get_message(int,int);
+int get_message(int,const char*,char*);
 
 
 

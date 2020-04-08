@@ -11,9 +11,11 @@ void print(const char*);
 int get_option();
 int new_i();
 void sentry(all_info*);
-void send_request(int, const char*);
 void entry_i();
 void show(all_info);
-
+int message_analysis(char*, const char*);
+void mystrcat(char*,char*,char*,char*,char*,char*);
+void create_msg(char* msg, all_info sv_info, const char* type);
+void parse_new(char*, server_info*, int*);
 
 #endif // INTERFACE_H_INCLUDED
