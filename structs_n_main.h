@@ -19,6 +19,20 @@ typedef struct
   char IP[IP_SIZE];
 }server_info;
 
+typedef struct ringfd
+{
+  //Fd relative to the predecessor TCP
+  int prev;
+  //Fd for the successor TCP
+  int next;
+  //Fd for UDP connection
+  int udp;
+  //Fd listening for TCP
+  int listen;
+  //Fd
+  int temp;
+}ringfd;
+
 //All the most used purses can be organized in a closet
 typedef struct
 {

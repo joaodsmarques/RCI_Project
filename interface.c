@@ -47,7 +47,7 @@ int new_i(){
   return key;
 }
 
-/*void sentry(all_info* sv_info){
+void sentry(all_info* sv_info){
   char buffer[VETOR_SIZE];
   sv_info->key=new_i();
   
@@ -63,7 +63,7 @@ int new_i(){
     exit(0);
   strtok(sv_info->Next_info.IP, "\n");
   strtok(sv_info->Next_info.port, "\n");
-}*/
+}
 
 void entry_i(all_info* sv_info){
   char buffer[VETOR_SIZE];

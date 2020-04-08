@@ -27,60 +27,54 @@ Obrigado!
 int main(int argc, char* argv[])
 {
   int maxfd = 0;
-  int fd_udp=-1, fd_tcp_next, fd_tcp_prev;
   char buff[42];
-  struct timeval* timeout;
-  fd_set sock_set;
+  struct timeval timeout;
+  ringfd active_fd;
+  active_fd.prev=active_fd.next=active_fd.udp=active_fd.listen=active_fd.temp=0;
+  fd_set read_set, write_set;
   all_info server;
-
 
   //Verifies input
   startup(argc, argv, &server);
-  
-  timeout = NULL;
+  timeout.tv_sec = 2;
+  timeout.tv_usec = 0;
 
   Display_menu();
 
   //Main program loop
   while(1){
-  	FD_ZERO(&sock_set);//needs to be reset every iteration
-  	FD_SET(STDIN_FILENO, &sock_set);
-  	maxfd = max(maxfd, STDIN_FILENO);
+    //will RESET and ADD all active FD to read_set using FD_ZERO and FD_SET
+  	maxfd = add_fd(&read_set, &write_set, active_fd);
 
-  	//only after being in the ring udp fd is set
-  	if(server.inRing == true){ 
-  		FD_SET(fd_udp, &sock_set);
-  		maxfd = max(maxfd, fd_udp);
-  	}
-  	//FD_SET TCP
-  	//FD_SET TCP
-  	select(maxfd+1, &sock_set, (fd_set*) NULL, (fd_set*) NULL, timeout);
+  	select(maxfd+1, &read_set, &write_set, (fd_set*) NULL, &timeout);
 	 	//For user input
-		if(FD_ISSET(STDIN_FILENO, &sock_set)){
+		if(FD_ISSET(STDIN_FILENO, &read_set)){
 			switch (get_option()){
       //NEW i
       /*Be the 1st server in a new ring with key "i"*/
     		case 1:
       		if(!server.inRing){
         		server.key = new_i();
-  					fd_udp=init_UDPsv(&server);
+  					active_fd.udp = init_UDPsv(&server);
+            active_fd.listen = init_TCPsv(&server);
             server.inRing = true;
       		}
           clrscreen();
           Display_menu();
     		break;
     		case 2:  //ENTRY i
-          
     		break;
     		case 3:
-          /*if(!server.inRing){
+          if(!server.inRing){
             sentry(&server);
-            fd_udp=init_UDPsv(&server);
-            init_UDPcl(&server);
+            active_fd.udp = init_UDPsv(&server);
+            active_fd.listen = init_TCPsv(&server);
+            active_fd.next = init_TCPcl(&server); //connects to successor
+            send_request(active_fd.next, "SUCCONF\n");
             server.inRing = true;
           }
             clrscreen();
-            Display_menu();*/
+            Display_menu();
     		break;
     		case 4:
     		break;
@@ -98,12 +92,29 @@ int main(int argc, char* argv[])
   		}
 		}
 		//For UDP message received
-		if(server.inRing && FD_ISSET(fd_udp, &sock_set))
+		if(server.inRing && FD_ISSET(active_fd.udp, &read_set))
 		{
 			//usado para testar, dps vai fora
-			recvfrom(fd_udp, buff, 42, 0, NULL, NULL);
+			recvfrom(active_fd.udp, buff, 42, 0, NULL, NULL);
 			printf("%s\n", buff);
 		}
+
+    //New tcp connection incoming
+    if(server.inRing && FD_ISSET(active_fd.listen, &read_set))
+    {
+      active_fd.temp = get_incoming(active_fd.listen);
+    }
+
+    //Will dealing with new tcp message
+    if(server.inRing && active_fd.temp && FD_ISSET(active_fd.temp, &read_set))
+    {
+      get_message(active_fd.temp, active_fd.prev);
+    }
+
+
+
+
+
 	}
   return 0;
 }
