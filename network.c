@@ -26,19 +26,29 @@ void startup(int argc, char* argv[], all_info *server){
   server->inRing = false;
 }
 
+void setnonblocking(int sock){
+  int opts;
+  opts = fcntl(sock,F_GETFL);
+  if(opts < 0)
+    exit(1);
+  opts = (opts | O_NONBLOCK);
+  if(fcntl(sock,F_SETFL,opts)<0)
+    exit(1);
+}
+
 int add_fd(fd_set* read_set, fd_set* write_set, ringfd active_fd){
   int max_fd = 0;
 
   FD_ZERO(read_set);
+  FD_ZERO(write_set);
   FD_SET(STDIN_FILENO, read_set);
   if(active_fd.listen){
     FD_SET(active_fd.listen, read_set);
-    FD_SET(active_fd.listen, write_set);
     max_fd = max(max_fd,active_fd.listen);
   }
   if (active_fd.udp){
     FD_SET(active_fd.udp, read_set);
-    FD_SET(active_fd.udp, write_set);
+    //FD_SET(active_fd.udp, write_set);
     max_fd = max(max_fd,active_fd.udp);
   }
   if(active_fd.next){
@@ -62,9 +72,12 @@ int add_fd(fd_set* read_set, fd_set* write_set, ringfd active_fd){
 
 int init_UDPsv(all_info* server){
   int sockfd,n;
+  int reuse_addr = 1;
   struct addrinfo hints, *res;
   sockfd = socket(AF_INET, SOCK_DGRAM, 0); //UDP SOCKET
-  fcntl(sockfd, F_SETFL, O_NONBLOCK);
+  setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr));
+
+  setnonblocking(sockfd);
   memset(&hints,0,sizeof hints);
   hints.ai_family=AF_INET;
   hints.ai_socktype=SOCK_DGRAM;
@@ -84,9 +97,11 @@ int init_UDPsv(all_info* server){
 int init_TCPsv(all_info* server)
 {
   int fd,errcode;
+  int reuse_addr = 1;
   struct addrinfo hints,*res;
   fd=socket(AF_INET,SOCK_STREAM,0);
-  fcntl(fd, F_SETFL, O_NONBLOCK);
+  setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr));
+  setnonblocking(fd);
 
   if (fd==-1){
     printf("error TCPsv\n");
@@ -113,10 +128,12 @@ int init_TCPsv(all_info* server)
 
 void init_UDPcl(all_info* sv_info){
   int fd, errcode;
+  int reuse_addr = 1;
   struct addrinfo hints, *res;
 
   fd=socket(AF_INET, SOCK_DGRAM, 0);
-  fcntl(fd, F_SETFL, O_NONBLOCK);
+  setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr));
+  setnonblocking(fd);
   if(fd==-1)
     exit(1);
   memset(&hints,0,sizeof hints);
@@ -135,11 +152,13 @@ void init_UDPcl(all_info* sv_info){
 
 int init_TCPcl(all_info* sv_info){
   int fd,errcode;
+  int reuse_addr = 1;
   ssize_t n;
   struct addrinfo hints,*res;
 
   fd=socket(AF_INET,SOCK_STREAM,0);
-  //fcntl(fd, F_SETFL, O_NONBLOCK);
+  setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr));
+  setnonblocking(fd);
 
   if (fd==-1){
     exit(1); //error
@@ -154,12 +173,13 @@ int init_TCPcl(all_info* sv_info){
     exit(1);//error
   }
   n=connect(fd,res->ai_addr,res->ai_addrlen);
-  printf("trying to connected\n");
+  printf("trying to connect\n");
 
+  /*
   if(n==-1){
     printf("erro connect\n");
     exit(1);  
-  }
+  }*/
   freeaddrinfo(res);
   return fd;
 }
@@ -176,8 +196,11 @@ void send_message(int fd, const char* msg){
 
 int get_incoming(int fd){
   int fd_aux;
+  int reuse_addr = 1;
 
   if((fd_aux = accept(fd, NULL, NULL)) != -1){
+    setsockopt(fd_aux, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr));
+    setnonblocking(fd_aux);
     printf("connected\n");
     return fd_aux;
   }
@@ -185,30 +208,32 @@ int get_incoming(int fd){
     return 0;
 }
 
-int get_message(int fd, const char* expected, char* msg){
-  char buffer[50];
-  size_t nbytes = sizeof(buffer);
+void get_message(int fd, char* msg){
+  char* buffer=NULL;
+  buffer = (char*) malloc(sizeof(char) * 50);
+  size_t nbytes = (sizeof(char)*50);
   ssize_t bytes_read;
+  memset(buffer,'\0',50);
+  memset(msg,'\0',50);
   
-  printf("getmessage\n");
   bytes_read = read(fd, buffer, nbytes);
-  if(bytes_read == -1)
+  if(bytes_read == -1){
     printf("didnt read shit, erro\n");
+    free(buffer);
+    close(fd);
+  }
 
   else if(bytes_read == 0){
     printf("n ha nada para ler porra\n");
-    return 0;
+    free(buffer);
+    //return 0;
   }
   else{
-    strcpy(buffer, strtok(buffer,"\n"));
-    printf("read: %s\n", buffer);
-    if (msg!=NULL)
-    {
-      msg[0]='\0';
-      strcpy(msg,buffer);
-    }
+    strcpy(msg, strtok(buffer,"\n"));
+    printf("read: %s\n", msg);
+    free(buffer);
+    //return 1;  
   }
-  return message_analysis(buffer, expected);
 }
 
 

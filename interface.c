@@ -94,10 +94,10 @@ void show(all_info sv_info){
   printf("Status: OPERATIONAL\n");
   printf("Server IP: %s:%s\n", sv_info.Myinfo.IP, sv_info.Myinfo.port);
   printf("Server key: %d\n", sv_info.key);
-  if(strcmp(sv_info.Next_info.IP, sv_info.Myinfo.IP))
+  if(strcmp(sv_info.Next_info.port, sv_info.Myinfo.port))
     printf("Connected to %s:%s key: %d\n", sv_info.Next_info.IP, sv_info.Next_info.port, sv_info.succ_key);
-  if(strcmp(sv_info.SecondNext_info.IP, sv_info.Myinfo.IP))
-    printf("Second next server: %s:%s\n", sv_info.SecondNext_info.IP, sv_info.SecondNext_info.port);
+  if(strcmp(sv_info.SecondNext_info.port, sv_info.Myinfo.port))
+    printf("Second next server: %s:%s key: %d\n", sv_info.SecondNext_info.IP, sv_info.SecondNext_info.port, sv_info.second_succ_key);
   printf("===================================\n");
   printf("press enter to continue\n");
 }
@@ -108,13 +108,17 @@ void clrscreen(){
 
 int message_analysis(char* msg, const char* expected){
   char *aux;
-
-  aux = strtok(msg," ");
-
-  if(!strcmp(aux,expected))
+  aux = (char*) malloc(sizeof(char) * 50);
+  strcpy(aux,msg);
+  aux = strtok(aux," ");
+  if(!strcmp(aux,expected)){
+    free(aux);
     return 1;
-  else
+  }
+  else{
+    free(aux);
     return 0;
+  }
 }
 
 void mystrcat(char* result,char* first,char* secnd,char* thrd,char* fourth,char* fifth){
@@ -130,7 +134,7 @@ void mystrcat(char* result,char* first,char* secnd,char* thrd,char* fourth,char*
     strcat(result, " ");
     strcat(result, fifth);
   }
-  strcat(result,"\n");
+  //strcat(result,"\n");
 }
 
 void create_msg(char* msg, all_info sv_info, const char* type){
@@ -143,15 +147,21 @@ void create_msg(char* msg, all_info sv_info, const char* type){
   }
   else if(!strcmp(type, "NEW"))
   {
-    
+    sprintf(key,"%d",sv_info.key);
+    mystrcat(msg,"NEW", key, sv_info.Myinfo.IP, sv_info.Myinfo.port, NULL);
   }
 }
 
 
 void parse_new(char* msg, server_info* server, int* key){
-  strtok(msg," ");
+  char *aux;
+  aux = (char*) malloc(sizeof(char) * 50);
+  memset(aux,'\0',50);
+  strcpy(aux,msg);
+  strtok(aux," ");
   *key = atoi(strtok(NULL, " "));
   strcpy(server->IP, strtok(NULL," "));
   strcpy(server->port, strtok(NULL," "));
+  free(aux);
   return;
 }
