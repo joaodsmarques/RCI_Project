@@ -20,7 +20,7 @@ all_info* startup(int _argc, char* _argv[], all_info * _server)
     _server->key=-1;
     _server->succ_key=-1;
     _server->inRing = false;
-    printf("Olha a string fresquinha:%s\n",_server->Next_info.port);
+
   }
 
   return _server;
@@ -41,7 +41,7 @@ void Display_main_menu()
 
 void Display_new_menu()
 {
-  printf("|-------------------!New Server Menu!------------------|\n");
+  printf("|-------------------!InRing Menu!------------------|\n");
   printf("   (Choose the number corresponding to your option)\n\n");
   printf("1.Leave \n");
   printf("2.Show \n");
@@ -181,6 +181,9 @@ all_info* Message_Analysis (char _buffer[VETOR_SIZE], all_info* myserver, int wh
     if(where== -1 || where == 1)
       strcpy(myserver->Next_info.IP,token);
 
+    if(where==2)
+      strcpy(myserver->SecondNext_info.IP,token);
+
     //Reads until the port beginning
     token=strtok(NULL, dot);
 
@@ -192,10 +195,13 @@ all_info* Message_Analysis (char _buffer[VETOR_SIZE], all_info* myserver, int wh
     if(where==-1 || where==1)
       strcpy(myserver->Next_info.port,token);
 
+    if(where==2)
+      strcpy(myserver->SecondNext_info.port,token);
+
     strcpy(_buffer, supbuffer);
 
     //In the first insertion the second succ is himself
-    if(where==-1|| where==2)
+    if(where==-1)
     {
       strcpy(myserver->SecondNext_info.IP,myserver->Myinfo.IP);
       strcpy(myserver->SecondNext_info.port,myserver->Myinfo.port);
@@ -218,7 +224,6 @@ void ServerState(all_info* myserver)
   printf("PRED IP & PORT:%s:%s\n", myserver->Prev_info.IP,myserver->Prev_info.port);
   printf("2º Succ IP & PORT:%s:%s\n", myserver->SecondNext_info.IP,myserver->SecondNext_info.port);
   printf("(Press enter to exit Server Status)\n");
-
 
 }
 

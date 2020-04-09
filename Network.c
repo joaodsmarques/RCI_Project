@@ -151,7 +151,7 @@ all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
     Display_new_menu();
 
     //Timeout reset 1sec
-    timeout.tv_sec=5;
+    timeout.tv_sec=2;
     timeout.tv_usec=0;
 
     //needs to be reset every iterationallfds.listen = init_TCP_listen((*myserver)->Myinfo.port);
@@ -168,13 +168,12 @@ all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
     FD_SET(mainfds.listen, &sock_set);
     maxfd = max(maxfd, mainfds.listen);
 
+    //If it is the first server node.  Can't set until we have a connection
     if(firstfriend != -1 )
     {
-      if(firstfriend == 0)
-      {
-        FD_SET(mainfds.pre, &sock_set);
-        maxfd = max(maxfd, mainfds.pre);
-      }
+
+      FD_SET(mainfds.pre, &sock_set);
+      maxfd = max(maxfd, mainfds.pre);
 
       FD_SET(mainfds.next, &sock_set);
       maxfd = max(maxfd, mainfds.next);
@@ -190,16 +189,20 @@ all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
       switch (get_option_inserver())
       {
         case 1:
-          printf("OPCAO 1\n");
+          printf("OPCAO 1-Teste-write succ\n");
+          write(mainfds.next,"OLA next\n",8);
     		break;
 
     		case 2:
         //Print the server state variables
         ServerState(myserver);
+        getc(stdin);
+
     		break;
 
     		case 3:
-          printf("OPCAO 3\n");
+        printf("OPCAO 3-Teste-write pred\n");
+        write(mainfds.pre,"OLA pre\n",8);
     		break;
       }
 
@@ -303,40 +306,25 @@ all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
           //e entra um novo- provoca alteracao do 2 sucessor)
         }
       }
-      //SENTRY: Se for o pre do novo no do anel
-      if(firstfriend == 1)
-      {
-        if(strstr(buffer,"SUCCCONF\n") !=NULL)
-        {
-          mainfds.pre=newfd;
 
-          n = read (mainfds.pre,buffer,VETOR_SIZE);
-
-          if(n==-1)
-            exit(1);//error
-          printf("JA estou ca\n");
-          if(strstr(buffer,"FIRST\n")!=NULL)
-          {
-            strcpy(myserver->SecondNext_info.IP,myserver->Myinfo.IP);
-            strcpy(myserver->SecondNext_info.port,myserver->Myinfo.port);
-            strcpy(myserver->Prev_info.IP,myserver->Next_info.IP);
-            strcpy(myserver->Prev_info.port,myserver->Next_info.port);
-
-            firstfriend = 0;
-          }
-          if(strstr(buffer2,"SUCC")!=NULL)
-          {
-            myserver = Message_Analysis (buffer,myserver,2);
-            firstfriend = 0;
-          }
-        }
-      }
 		}
+
+    //Predecessor is talking
+    if (FD_ISSET(mainfds.pre, &sock_set))
+    {
+      n = read (mainfds.pre,buffer, VETOR_SIZE);
+
+      if(n==-1)
+        exit(1);
+
+      if(strstr(buffer,"OLA")!=NULL)
+        write(1,buffer,n);
+
+    }
 
     //Successor is talking
     if (FD_ISSET(mainfds.next, &sock_set))
 		{
-
       //Recebe algo do sucessor
       n = read (mainfds.next,buffer, VETOR_SIZE);
 
@@ -386,13 +374,8 @@ all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
           exit(1);//error
         }
       }
-		}
-
-    //Predecessor is talking
-    if (FD_ISSET(mainfds.pre, &sock_set))
-		{
-
-
+      if(strstr(buffer,"OLA")!=NULL)
+        write(1,buffer,n);
 		}
 
   }while(myserver->inRing != false);
@@ -403,6 +386,7 @@ all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
 ringfd Sentry_Startup(all_info** myserver)
 {
   char buffer[VETOR_SIZE];
+  char buffer2[VETOR_SIZE];
 
   ringfd allfds;
   allfds.pre=0;
@@ -411,6 +395,10 @@ ringfd Sentry_Startup(all_info** myserver)
   allfds.udp=0;
 
   int n;
+  int newfd=0, stop=-1;
+
+  struct sockaddr_in addr;
+  socklen_t addrlen;
 
   //Connect to the successor
   allfds.next = TCP_InitnConect( (*myserver)->Next_info.IP, (*myserver)->Next_info.port);
@@ -428,54 +416,85 @@ ringfd Sentry_Startup(all_info** myserver)
     printf("write error\n");
     exit(1);//error
   }
-
-  //Expects to read the 2ºsucc information from the sucessor
-  n = read (allfds.next,buffer,VETOR_SIZE);
-  if(n==-1)
+  while(stop!=0)
   {
-    printf("Read error\n");
-    exit(1);//error
+    //Expects to read the 2ºsucc information from the sucessor
+    if((n = read (allfds.next,buffer,VETOR_SIZE)!=0))
+    {
+      if(n==-1)
+      {
+        printf("Read error\n");
+        exit(1);//error
+      }
+
+    //eg: SUCC 12 12.IP 12.TCP - 2º Sucessor
+      if(strstr(buffer,"SUCC")!=NULL)
+      {
+        (*myserver)=Message_Analysis(buffer, (*myserver),2);
+        stop=0;
+      }
+    }
   }
 
-  //eg: SUCC 12 12.IP 12.TCP - 2º Sucessor
-  if(strstr(buffer,"SUCC")!=NULL)
-    (*myserver)=Message_Analysis(buffer, (*myserver),2);
+  //First Part set!!!!
+  printf("Ja fiz\n");
+  stop=-1;
 
-
-  //FIRST CONNECTION OF THE PROCESS IS COMPLETE!
-
-
-  //Accept the new connection- possibly the predecessor
-  /*newfd = accept(allfds.listen,(struct sockaddr*)&addr,&addrlen);
-  //MELHORAR ISTO PARA O CASO EM Q SE CONECTA UM SERVIDOR ALEATORIO Q NAO ERA SUPOST-retorno do listen??
-  printf("ACEITO\n");
-  if(newfd==-1)
-    exit(1); //error
-
-  n = read (newfd,buffer,sizeof(buffer));
-
-  if(n==-1)
-    exit(1);//error
-
-  //Predecessor is identifying itself
-  if(strstr(buffer,"SUCCCONF\n") !=NULL)
+  //Starts the second part
+  //Accept the new connection
+  while(stop!=0)
   {
-    printf("JA estou ca\n");
-    allfds.pre=newfd;
-    n = read (allfds.pre,buffer,sizeof(buffer));
+    if((newfd = accept(allfds.listen,(struct sockaddr*)&addr,&addrlen))==-1)
+      exit(1); //error
 
-    if(strstr(buffer,"FIRST\n")!=NULL)
+    if( (n = read (newfd,buffer,VETOR_SIZE))!=0)
     {
-      strcpy((*myserver)->SecondNext_info.IP,(*myserver)->Myinfo.IP);
-      strcpy((*myserver)->SecondNext_info.port,(*myserver)->Myinfo.port);
-      strcpy((*myserver)->Prev_info.IP,(*myserver)->Next_info.IP);
-      strcpy((*myserver)->Prev_info.port,(*myserver)->Next_info.port);
-    }
-    if(strstr(buffer,"SUCC")!=NULL)
-    {
+      if(n==-1)
+      {
+        printf("Read error\n");
+        exit(1);//error
+      }
+      //The connection we were expecting
+      if(strstr(buffer,"SUCCCONF\n") !=NULL)
+      {
+        allfds.pre=newfd;
 
+        if((n = read (allfds.pre,buffer2,VETOR_SIZE))!=0)
+        {
+
+          if(n==-1)
+          exit(1);//error
+          printf("JA estou ca\n");
+
+          //We are the second node so we have all we need already
+          if(strstr(buffer2,"FIRST\n")!=NULL)
+          {
+            strcpy((*myserver)->SecondNext_info.IP,(*myserver)->Myinfo.IP);
+            strcpy((*myserver)->SecondNext_info.port,(*myserver)->Myinfo.port);
+            strcpy((*myserver)->Prev_info.IP,(*myserver)->Next_info.IP);
+            strcpy((*myserver)->Prev_info.port,(*myserver)->Next_info.port);
+
+          stop=0;
+          }
+          //We are at least the 3rd node, lets save all the info.
+          if(strstr(buffer2,"SUCC")!=NULL)
+          {
+            (*myserver) = Message_Analysis (buffer2,(*myserver),0);
+            stop=0;
+          }
+        }
+      }
     }
-  }*/
+      //if this was a mistaken call, lets close and try again
+    if(stop != 0)
+    {
+      printf("Erro na conexao ao pre\n");
+      close(newfd);
+      exit(1);
+    }
+  }
+
+
 
   (*myserver)->inRing=true;
 
