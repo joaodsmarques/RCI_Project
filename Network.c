@@ -121,12 +121,12 @@ all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
   //Max nb in select, receiving filedescriptor and temporary fd
   int maxfd = 0,newfd = 0, auxfd=0;
   int n;
-
+  int option=-1;
   //FLAG
   int firstfriend=-1;
   //Time lapse variable
   struct timeval timeout;
-  timeout.tv_sec=2;
+  timeout.tv_sec=0;
   timeout.tv_usec=0;
 
   struct sockaddr_in addr;
@@ -151,8 +151,7 @@ all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
     Display_new_menu();
 
     //Timeout reset 1sec
-    timeout.tv_sec=2;
-    timeout.tv_usec=0;
+
 
     //needs to be reset every iterationallfds.listen = init_TCP_listen((*myserver)->Myinfo.port);
     FD_ZERO(&sock_set);
@@ -180,13 +179,13 @@ all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
     }
 
     //Central Master controller
-  	select(maxfd+1, &sock_set, (fd_set*) NULL, (fd_set*) NULL, &timeout);
+  	select(maxfd+1, &sock_set, (fd_set*) NULL, (fd_set*) NULL, (struct timeval*) NULL);
 
     //If the keyboard is pressed
     if(FD_ISSET(STDIN_FILENO, &sock_set))
     {
-
-      switch (get_option_inserver())
+      scanf("%d",&option);
+      switch (option)
       {
         case 1:
           printf("OPCAO 1-Teste-write succ\n");
@@ -196,14 +195,17 @@ all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
     		case 2:
         //Print the server state variables
         ServerState(myserver);
-        getc(stdin);
-
     		break;
 
     		case 3:
         printf("OPCAO 3-Teste-write pred\n");
         write(mainfds.pre,"OLA pre\n",8);
     		break;
+
+        default:
+          system("clear");
+          Display_new_menu();
+
       }
 
     }
@@ -219,163 +221,168 @@ all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
     if (FD_ISSET(mainfds.listen, &sock_set))
 		{
       //Accept the new connection
-      newfd = accept(mainfds.listen,(struct sockaddr*)&addr,&addrlen);
-
-      if(newfd==-1)
-        exit(1); //error
-
-      n = read (newfd,buffer,VETOR_SIZE);
-
-      if(n==-1)
+      if((newfd = accept(mainfds.listen,(struct sockaddr*)&addr,&addrlen)) != 0)
       {
-        printf("Read error\n");
-        exit(1);//error
-      }
 
+        if(newfd==-1)
+          exit(1); //error
 
-      //Se for um pedido de entrada no anel
-      if(strstr(buffer,"NEW")!=NULL)
-      {
-        //First connection of the new ring
-        if(firstfriend==-1)
+        n = read (newfd,buffer,VETOR_SIZE);
+
+        if(n==-1)
         {
-          mainfds.pre=newfd;
-          myserver = Message_Analysis (buffer,myserver,-1);
-          //Excreve 2 sucessor no predecessor
-          n=sprintf(buffer,"SUCC %d %d.%s %d.%s\n", myserver->succ_key, myserver->succ_key,
-          myserver->Prev_info.IP,myserver->succ_key,myserver->Prev_info.port);
-          printf("buffer:%s",buffer);
-
-          write(mainfds.pre, buffer, n);
-          if(n==-1)
-          {
-            printf("Read error\n");
-            exit(1);//error
-          }
-
-          mainfds.next = TCP_InitnConect(myserver->Next_info.IP, myserver->Next_info.port);
-
-          n=write(mainfds.next,"SUCCCONF\n", 9);
-          if(n==-1)
-          {
-            printf("write error\n");
-            exit(1);//error
-          }
-
-          n=write(mainfds.next,"FIRST\n", 6);
-          if(n==-1)
-          {
-            printf("write error\n");
-            exit(1);//error
-          }
-
-          firstfriend=0;
-          //close(mainfds.pre);
-          printf("FIZ TUDO\n");
+          printf("Read error\n");
+          exit(1);//error
         }
-        else
+
+
+        //Se for um pedido de entrada no anel
+        if(strstr(buffer,"NEW")!=NULL)
         {
-          //auxfd passa a ser o antigo predecessor
-          auxfd = mainfds.pre;
-          //novo predecessor e atualizado
-          mainfds.pre = newfd;
-
-          myserver = Message_Analysis (buffer,myserver,0);
-
-          //Avisa o antigo predecessor do novo Sucessor
-          n=write(auxfd, buffer, n);
-          if(n==-1)
+          //First connection of the new ring
+          if(firstfriend==-1)
           {
-            printf("write error\n");
-            exit(1);//error
+            mainfds.pre=newfd;
+            myserver = Message_Analysis (buffer,myserver,-1);
+            //Excreve 2 sucessor no predecessor
+            n=sprintf(buffer,"SUCC %d %d.%s %d.%s\n", myserver->succ_key, myserver->succ_key,
+            myserver->Prev_info.IP,myserver->succ_key,myserver->Prev_info.port);
+            printf("buffer:%s",buffer);
+
+            write(mainfds.pre, buffer, n);
+            if(n==-1)
+            {
+              printf("Read error\n");
+              exit(1);//error
+            }
+
+            mainfds.next = TCP_InitnConect(myserver->Next_info.IP, myserver->Next_info.port);
+
+            n=write(mainfds.next,"SUCCCONF\n", 9);
+            if(n==-1)
+            {
+              printf("write error\n");
+              exit(1);//error
+            }
+
+            n=write(mainfds.next,"FIRST\n", 6);
+            if(n==-1)
+            {
+              printf("write error\n");
+              exit(1);//error
+            }
+
+            firstfriend=0;
+            //close(mainfds.pre);
+            printf("FIZ TUDO\n");
           }
-          close(auxfd);
-
-          //Diz qual o 2º sucessor do predecessor
-          n=sprintf(buffer,"SUCC %d %d.%s %d.%s\n", myserver->succ_key, myserver->succ_key,
-          myserver->Next_info.IP,myserver->succ_key,myserver->Next_info.port);
-
-          n=write(mainfds.pre, buffer, n);
-          if(n==-1)
+          else
           {
-            printf("write error\n");
-            exit(1);//error
-          }
+            //auxfd passa a ser o antigo predecessor
+            auxfd = mainfds.pre;
+            //novo predecessor e atualizado
+            mainfds.pre = newfd;
 
-          //Mandar mensagem ao sucessor a perguntar se o sucessor dele se mantem ou nao!!!!(caso 2 servidores
-          //e entra um novo- provoca alteracao do 2 sucessor)
+            myserver = Message_Analysis (buffer,myserver,0);
+
+            //Avisa o antigo predecessor do novo Sucessor
+            n=write(auxfd, buffer, n);
+            if(n==-1)
+            {
+              printf("write error\n");
+              exit(1);//error
+            }
+            close(auxfd);
+
+            //Diz qual o 2º sucessor do predecessor
+            n=sprintf(buffer,"SUCC %d %d.%s %d.%s\n", myserver->succ_key, myserver->succ_key,
+            myserver->Next_info.IP,myserver->succ_key,myserver->Next_info.port);
+
+            n=write(mainfds.pre, buffer, n);
+            if(n==-1)
+            {
+              printf("write error\n");
+              exit(1);//error
+            }
+
+            //Mandar mensagem ao sucessor a perguntar se o sucessor dele se mantem ou nao!!!!(caso 2 servidores
+            //e entra um novo- provoca alteracao do 2 sucessor)
+          }
         }
       }
-
 		}
 
     //Predecessor is talking
     if (FD_ISSET(mainfds.pre, &sock_set))
     {
-      n = read (mainfds.pre,buffer, VETOR_SIZE);
+      if( (n = read (mainfds.pre,buffer, VETOR_SIZE)) != 0)
+      {
+        if(n==-1)
+          exit(1);
 
-      if(n==-1)
-        exit(1);
-
-      if(strstr(buffer,"OLA")!=NULL)
-        write(1,buffer,n);
-
+        if(strstr(buffer,"OLA")!=NULL)
+          write(1,buffer,n);
+      }
     }
 
     //Successor is talking
     if (FD_ISSET(mainfds.next, &sock_set))
 		{
       //Recebe algo do sucessor
-      n = read (mainfds.next,buffer, VETOR_SIZE);
-
-      if(n==-1)
-        exit(1);
-
-      //eg: SUCC 12 12.IP 12.TCP - 2º Sucessor
-      if(strstr(buffer,"SUCC")!=NULL)
-        myserver=Message_Analysis(buffer, myserver,2);
-
-      //Significa que vai ter um novo sucessor
-      if(strstr(buffer,"NEW")!=NULL)
+      if((n = read (mainfds.next,buffer, VETOR_SIZE)) != 0)
       {
-        //Encerra sessão com antigo sucessor
-        close(mainfds.next);
-        myserver=Message_Analysis(buffer, myserver,1);
-        //Nova sessão com novo sucessor
-        mainfds.next = TCP_InitnConect(myserver->Next_info.IP, myserver->Next_info.port);
-
-        n=write(mainfds.next,"SUCCCONF\n", 9);
-
         if(n==-1)
+          exit(1);
+
+        //eg: SUCC 12 12.IP 12.TCP - 2º Sucessor
+        if(strstr(buffer,"SUCC")!=NULL)
+          myserver=Message_Analysis(buffer, myserver,2);
+
+        //Significa que vai ter um novo sucessor
+        if(strstr(buffer,"NEW")!=NULL)
         {
-          printf("write error\n");
-          exit(1);//error
+          //Encerra sessão com antigo sucessor
+          close(mainfds.next);
+          //The successor becomes the Second Successor
+          strcpy(myserver->SecondNext_info.IP,myserver->Next_info.IP);
+          strcpy(myserver->SecondNext_info.port,myserver->Next_info.port);
+          myserver=Message_Analysis(buffer, myserver,1);
+          //Nova sessão com novo sucessor
+          mainfds.next = TCP_InitnConect(myserver->Next_info.IP, myserver->Next_info.port);
+
+          n=write(mainfds.next,"SUCCCONF\n", 9);
+
+          if(n==-1)
+          {
+            printf("write error\n");
+            exit(1);//error
+          }
+          //Da ao novo sucessor as informações do predecessor (as suas)
+          n=sprintf(buffer,"SUCC %d %d.%s %d.%s\n", myserver->key, myserver->key,
+          myserver->Myinfo.IP,myserver->key,myserver->Myinfo.port);
+
+          n=write(mainfds.next,buffer, n);
+
+          if(n==-1)
+          {
+            printf("write error\n");
+            exit(1);//error
+          }
+          //Diz ao predecessor que o segundo sucessor deste mudou
+          n=sprintf(buffer,"SUCC %d %d.%s %d.%s\n", myserver->succ_key, myserver->succ_key,
+          myserver->Next_info.IP,myserver->succ_key,myserver->Next_info.port);
+
+          n=write(mainfds.pre,buffer,n);
+
+          if(n==-1)
+          {
+            printf("write error\n");
+            exit(1);//error
+          }
         }
-        //Da ao novo sucessor as informações do predecessor (as suas)
-        n=sprintf(buffer,"SUCC %d %d.%s %d.%s\n", myserver->key, myserver->key,
-        myserver->Myinfo.IP,myserver->key,myserver->Myinfo.port);
-
-        n=write(mainfds.next,buffer, n);
-
-        if(n==-1)
-        {
-          printf("write error\n");
-          exit(1);//error
-        }
-        //Diz ao predecessor que o segundo sucessor deste mudou
-        n=sprintf(buffer,"SUCC %d %d.%s %d.%s\n", myserver->succ_key, myserver->succ_key,
-        myserver->Next_info.IP,myserver->succ_key,myserver->Next_info.port);
-
-        n=write(mainfds.pre,buffer,n);
-
-        if(n==-1)
-        {
-          printf("write error\n");
-          exit(1);//error
-        }
+        if(strstr(buffer,"OLA")!=NULL)
+          write(1,buffer,n);
       }
-      if(strstr(buffer,"OLA")!=NULL)
-        write(1,buffer,n);
 		}
 
   }while(myserver->inRing != false);

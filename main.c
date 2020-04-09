@@ -24,6 +24,14 @@ int main(int argc, char * argv[])
   allfds.next=0;
   allfds.udp=0;
 
+  struct sigaction act;
+
+  memset(&act,0,sizeof act);
+  act.sa_handler=SIG_IGN;
+
+  if(sigaction(SIGPIPE,&act,NULL)==-1)
+    exit(1);
+    
   server = MemoryAlloc();
   server = startup(argc, argv, server);
 
