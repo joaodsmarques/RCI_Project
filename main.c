@@ -18,9 +18,16 @@ int main(int argc, char * argv[])
   int menu = 0;
   all_info * server;
 
+  ringfd allfds;
+  allfds.pre=0;
+  allfds.listen=0;
+  allfds.next=0;
+  allfds.udp=0;
+
   server = MemoryAlloc();
   server = startup(argc, argv, server);
 
+  system("clear");
   while(menu != -1)
   {
     //Mostra as opções que estao no menu e recolhe a escolhida na
@@ -32,16 +39,16 @@ int main(int argc, char * argv[])
     switch (menu)
     {
         case 1:
-            if(server->inRing == false)
-            {
-              server=Choose_key(server);
-              server->inRing = true;
-              server = NewServer_Heart(server);
-            }
-            else
-            {
-              printf("Server already in ring\nChoose another option\n");
-            }
+          if(server->inRing == false)
+          {
+            server=Choose_key(server);
+            server->inRing = true;
+            server = Server_Heart(server, 0, allfds);
+          }
+          else
+          {
+            printf("Server already in ring\nChoose another option\n");
+          }
             //TCP_Server_Connect(MyCloset);
 
         break;
@@ -51,7 +58,14 @@ int main(int argc, char * argv[])
         break;
 
         case 3:
+          server = StartSucci(server);
+          allfds = Sentry_Startup(&server);
+          server = Server_Heart(server, 1, allfds);
 
+          allfds.pre=0;
+          allfds.listen=0;
+          allfds.next=0;
+          allfds.udp=0;
         break;
 
         case 4:
