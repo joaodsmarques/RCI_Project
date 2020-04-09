@@ -64,7 +64,6 @@ int get_option()
 
 int get_option_inserver()
 {
-
   int option = 0;
   char buffer[VETOR_SIZE];
 
@@ -155,7 +154,7 @@ all_info* Message_Analysis (char _buffer[VETOR_SIZE], all_info* myserver, int wh
     strcpy(supbuffer, token);
   }
   //Verifica se tem a palavra NEW na mensagem
-  if(strstr(_buffer,"NEW")!=NULL || strstr(_buffer,"SUCC")!=NULL)
+  if(strstr(_buffer,"NEW ")!=NULL || strstr(_buffer,"SUCC ")!=NULL)
   {
     //Reads the first word
     token = strtok( _buffer,space);

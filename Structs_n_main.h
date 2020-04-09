@@ -6,6 +6,8 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include <signal.h>
+
 #define IP_SIZE 20
 #define VETOR_SIZE 128
 #define PORT_SIZE 10
