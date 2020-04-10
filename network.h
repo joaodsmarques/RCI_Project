@@ -10,9 +10,9 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-void startup(int, char**, all_info*);
+void startup(int, char**, all_info*, ringfd*);
 int add_read_fd(fd_set*, ringfd);
-int add_write_fd(int pending, fd_set* write_set, int fd, int max_fd);
+int add_write_fd(int, fd_set*, int, int);
 void setnonblocking(int);
 int init_UDPsv(all_info*);
 void init_UDPcl(all_info*);

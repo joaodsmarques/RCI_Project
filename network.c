@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <strings.h>
 #define PORT "50000"
-void startup(int argc, char* argv[], all_info *server){
+void startup(int argc, char* argv[], all_info *server, ringfd *active_fd){
 
   if (argc != 3)
     exit(0);
@@ -24,6 +24,7 @@ void startup(int argc, char* argv[], all_info *server){
   strcpy(server->SecondNext_info.port, argv[2]);
   server->key=-1;
   server->inRing = false;
+  active_fd->prev=active_fd->next=active_fd->udp=active_fd->listen=active_fd->temp=0;
 }
 
 void setnonblocking(int sock){

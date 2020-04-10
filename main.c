@@ -26,19 +26,17 @@ Obrigado!
 
 int main(int argc, char* argv[])
 {
-  int pending=0;
   int maxfd = 0;
   char buff[50];
+  bool pending = false;
   //struct timeval timeout;
   ringfd active_fd;
-  active_fd.prev=active_fd.next=active_fd.udp=active_fd.listen=active_fd.temp=0;
   fd_set read_set, write_set;
   all_info server;
 
   //Verifies input
-  startup(argc, argv, &server);
+  startup(argc, argv, &server, &active_fd);
   Display_menu();
-  FD_ZERO(&write_set);
 
   //Main program loop
   while(1){
@@ -49,18 +47,6 @@ int main(int argc, char* argv[])
     //timeout.tv_usec = 0;
 
   	select(maxfd+1, &read_set, &write_set, (fd_set*) NULL, NULL);
-/*
-if(FD_ISSET(active_fd.temp, &read_set))
-  printf("well shit what now? 1\n");
-if(FD_ISSET(active_fd.listen,&read_set))
-  printf("well shit what now? 2\n");
-if(FD_ISSET(active_fd.prev,&read_set))
-  printf("well shit what now? 3\n");
-if(FD_ISSET(active_fd.next,&read_set))
-  printf("well shit what now? 4\n");
-
-*/
-
 	 	//For user input
 		if(FD_ISSET(STDIN_FILENO, &read_set)){
 			switch (get_option()){
@@ -86,8 +72,7 @@ if(FD_ISSET(active_fd.next,&read_set))
             active_fd.udp = init_UDPsv(&server);
             active_fd.listen = init_TCPsv(&server);
             active_fd.next = init_TCPcl(&server); //connects to successor
-            //add_write_fd(pending, &write_set, active_fd.next, maxfd);
-            pending = true; //pending connection accepted
+            pending = true; //pending connection to be accepted by successor
             server.inRing = true;
           }
             clrscreen();
@@ -123,79 +108,78 @@ if(FD_ISSET(active_fd.next,&read_set))
 		}*/
 
     //New tcp connection incoming
-    if(server.inRing && FD_ISSET(active_fd.listen, &read_set)){
+    if(server.inRing && FD_ISSET(active_fd.listen, &read_set))
       active_fd.temp = get_incoming(active_fd.listen);
-printf("get incoming\n");
-    }
 
-    //Will dealing with new tcp message
+    //Will deal with new tcp message
     if(server.inRing && active_fd.temp && FD_ISSET(active_fd.temp, &read_set)){
       get_message(active_fd.temp, buff);
       //SUCCONF received
       if(message_analysis(buff, "SUCCONF")){
-
+        //Answer with SUCC
           create_msg(buff, server, "SUCC");
           send_message(active_fd.temp, buff);
-          if(!active_fd.prev){
+          //If there is only one server
+          if(!active_fd.prev)
             active_fd.prev=active_fd.temp;
-          }
-
-      } //Will receive the previous server data(antecessor)
+      } 
+      //NEW received
       else if(message_analysis(buff,"NEW")){
-        //Se houver prev
+        //If there more than one server
         if(active_fd.prev != active_fd.temp){
-          /*Enviar ao atual prev as informaç~oes recebidas*/
+          //Send info (of his new succ) to current prev, before switching*/
           send_message(active_fd.prev, buff);
           close(active_fd.prev);
           active_fd.prev = active_fd.temp;
           active_fd.temp = 0;
-          //pending = false; 
         }
         else{
-        //se n~ao houver, apenas se atualiza o fd para o prev
-        //Next e prev s~ao o mm servidor. ´e preciso ligar tcp
+        //If prev and temp are the same
+        //It is the first connection in the ring, prev will also be the next
           parse_new(buff, &(server.SecondNext_info), &(server.second_succ_key));
           parse_new(buff, &(server.Next_info), &(server.succ_key));
           active_fd.next = init_TCPcl(&server);
           pending = true;
           active_fd.temp = 0;
         }
-   
       }
       else{
         printf("unexpected message: abort\n");
+        if(active_fd.prev == active_fd.temp)
+          active_fd.prev = 0;
         close(active_fd.temp);
       }
     }
+
     //////////CLIENT SIDE HANDLING/////////
     ///////////////////////////////////////
     ///////////////////////////////////////
 
+    //Wait until connection is accepted, then write
     if(FD_ISSET(active_fd.next, &write_set)){
       send_message(active_fd.next, "SUCCONF");
       pending = false;
     }
-
+    //If connection is made and there is something to read
     if(active_fd.next && FD_ISSET(active_fd.next, &read_set)){
       get_message(active_fd.next,buff);
       if(message_analysis(buff,"SUCC")){
         parse_new(buff, &(server.SecondNext_info), &(server.second_succ_key));
-        printf("2succ %d, succ %d\n", server.second_succ_key , server.succ_key);
-        if(!(active_fd.prev && active_fd.next)){
+        //Give info to next, so next can inform his prev about me
+        if(!active_fd.prev){
           create_msg(buff, server, "NEW");
           send_message(active_fd.next, buff);
-        }
-        
+        } 
       }
       else if(message_analysis(buff,"NEW")){
         parse_new(buff, &(server.Next_info), &(server.succ_key));
+        create_msg(buff, server, "SUCC");
+        send_message(active_fd.prev, buff);
         close(active_fd.next);
         active_fd.next = init_TCPcl(&server);
         pending = true;
       }
     }
-
-
 	}
   return 0;
 }
