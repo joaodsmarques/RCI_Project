@@ -20,8 +20,8 @@ int init_TCPsv(all_info*);
 int init_TCPcl(all_info*);
 void send_message(int, const char*);
 int get_incoming(int);
-void get_message(int,char*);
-
+int get_message(int,char*);
+int isAlive(int, fd_set*);
 
 
 

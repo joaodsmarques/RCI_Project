@@ -215,7 +215,7 @@ int get_incoming(int fd){
     return 0;
 }
 
-void get_message(int fd, char* msg){
+int get_message(int fd, char* msg){
   char* buffer=NULL;
   buffer = (char*) malloc(sizeof(char) * 50);
   size_t nbytes = (sizeof(char)*50);
@@ -228,19 +228,34 @@ void get_message(int fd, char* msg){
     printf("didnt read shit, erro\n");
     free(buffer);
     close(fd);
+    return 0;
   }
 
   else if(bytes_read == 0){
     printf("n ha nada para ler porra\n");
     free(buffer);
-    //return 0;
+    return 0;
   }
   else{
     strcpy(msg, strtok(buffer,"\n"));
     printf("read: %s\n", msg);
     free(buffer);
-    //return 1;  
+    return 1;  
   }
+}
+
+int isAlive(int fd, fd_set *read_set){
+
+  char buff[50];
+
+  if(FD_ISSET(fd, read_set)){
+    if(read(fd,buff,sizeof(buff)) < 0){
+      printf("IS DEAD\n");
+      return 0;
+    } 
+  }
+  printf("is alive\n");
+  return 1;
 }
 
 

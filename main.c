@@ -19,9 +19,11 @@ Obrigado!
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <stdbool.h>
+#include <signal.h>
 
 //for debug
 #include <stdio.h>
+
 
 
 int main(int argc, char* argv[])
@@ -33,6 +35,10 @@ int main(int argc, char* argv[])
   ringfd active_fd;
   fd_set read_set, write_set;
   all_info server;
+  struct sigaction act;
+  memset(&act,0,sizeof act);
+  act.sa_handler=SIG_IGN;
+  sigaction(SIGPIPE,&act,NULL);
 
   //Verifies input
   startup(argc, argv, &server, &active_fd);
@@ -78,12 +84,21 @@ int main(int argc, char* argv[])
             clrscreen();
             Display_menu();
     		break;
-    		case 4:
+    		case 4://LEAVE
+        if(server.inRing){
+          close(active_fd.next);
+          close(active_fd.prev);
+          close(active_fd.udp);
+          close(active_fd.listen);
+          close(active_fd.temp);
+          server.inRing = false;
+        }
     		break;
     		case 5: //SHOW
           show(server);
     		break;
     		case 6:
+        isAlive(active_fd.prev, &read_set);
     		break;
     		case 7:
           exit(0);
@@ -114,14 +129,16 @@ int main(int argc, char* argv[])
     //Will deal with new tcp message
     if(server.inRing && active_fd.temp && FD_ISSET(active_fd.temp, &read_set)){
       get_message(active_fd.temp, buff);
+
       //SUCCONF received
       if(message_analysis(buff, "SUCCONF")){
         //Answer with SUCC
           create_msg(buff, server, "SUCC");
           send_message(active_fd.temp, buff);
           //If there is only one server
-          if(!active_fd.prev)
+          if(!active_fd.prev){
             active_fd.prev=active_fd.temp;
+          }
       } 
       //NEW received
       else if(message_analysis(buff,"NEW")){
@@ -162,7 +179,16 @@ int main(int argc, char* argv[])
     }
     //If connection is made and there is something to read
     if(active_fd.next && FD_ISSET(active_fd.next, &read_set)){
-      get_message(active_fd.next,buff);
+
+      if(!get_message(active_fd.next,buff)){
+
+        strcpy(server.Next_info.port, server.SecondNext_info.port);
+        server.succ_key=server.second_succ_key;
+        active_fd.next = init_TCPcl(&server);
+        pending = true;
+        continue;
+
+      }
       if(message_analysis(buff,"SUCC")){
         parse_new(buff, &(server.SecondNext_info), &(server.second_succ_key));
         //Give info to next, so next can inform his prev about me

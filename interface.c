@@ -150,6 +150,8 @@ void create_msg(char* msg, all_info sv_info, const char* type){
     sprintf(key,"%d",sv_info.key);
     mystrcat(msg,"NEW", key, sv_info.Myinfo.IP, sv_info.Myinfo.port, NULL);
   }
+  else if(!strcmp(type,"LEAVE"))
+    strcpy(msg,"LEAVE");
 }
 
 
