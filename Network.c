@@ -112,8 +112,9 @@ int TCP_InitnConect( char IP[], char PORT[])
 
 /*type indicates if the server wars created by the sentry command or
 the new i command.
-type 0 = new
-type 1 = entry
+type -1 = server with a single node
+type 0 = normal server
+type 1 = server entry
 
 */
 all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
@@ -121,13 +122,10 @@ all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
   //Max nb in select, receiving filedescriptor and temporary fd
   int maxfd = 0,newfd = 0, auxfd=0;
   int n;
-  int option=-1;
-  //FLAG
-  int firstfriend=-1;
+  int option = -1;
   //Time lapse variable
-  struct timeval timeout;
-  timeout.tv_sec=0;
-  timeout.tv_usec=0;
+//  struct timeval timeout;
+
 
   struct sockaddr_in addr;
   socklen_t addrlen;
@@ -137,22 +135,19 @@ all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
   char buffer2[VETOR_SIZE];
   char buff[10];
 
+  if(type==1)
+    mainfds = Sentry_Startup(&myserver);
+
   mainfds.udp = init_UDPsv(myserver);
 
-  if(type!=1)
+  if(type != 1)
     mainfds.listen = init_TCP_listen(myserver->Myinfo.port);
 
-  //The entering server already has someone else in the ring
-  if(type == 1)
-    firstfriend = 1;
 
+  //Main cicle- The server heart
   do
   {
     Display_new_menu();
-
-    //Timeout reset 1sec
-
-
     //needs to be reset every iterationallfds.listen = init_TCP_listen((*myserver)->Myinfo.port);
     FD_ZERO(&sock_set);
 
@@ -168,11 +163,13 @@ all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
     maxfd = max(maxfd, mainfds.listen);
 
     //If it is the first server node.  Can't set until we have a connection
-    if(firstfriend != -1 )
+    if(type != -1 )
     {
-
-      FD_SET(mainfds.pre, &sock_set);
-      maxfd = max(maxfd, mainfds.pre);
+      if(type == 0)
+      {
+        FD_SET(mainfds.pre, &sock_set);
+        maxfd = max(maxfd, mainfds.pre);
+      }
 
       FD_SET(mainfds.next, &sock_set);
       maxfd = max(maxfd, mainfds.next);
@@ -184,50 +181,48 @@ all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
     //If the keyboard is pressed
     if(FD_ISSET(STDIN_FILENO, &sock_set))
     {
-      scanf("%d",&option);
+       scanf("%d",&option);//Por aqui um fgets e sscanf em vez do scanf
       switch (option)
       {
-        case 1:
+        case 1: //Temporary auxiliar func
           printf("OPCAO 1-Teste-write succ\n");
           write(mainfds.next,"OLA next\n",8);
     		break;
 
     		case 2:
-        //Print the server state variables
-        ServerState(myserver);
+          //Print the server state variables
+          ServerState(myserver);
     		break;
 
-    		case 3:
-        printf("OPCAO 3-Teste-write pred\n");
-        write(mainfds.pre,"OLA pre\n",8);
+    		case 3: //Temporary auxiliar func
+          printf("OPCAO 3-Teste-write pred\n");
+          write(mainfds.pre,"OLA pre\n",8);
     		break;
 
         default:
           system("clear");
-          Display_new_menu();
-
       }
-
     }
 
     //UDP talking
-    if (FD_ISSET(mainfds.udp, &sock_set))
-		{
-      recvfrom(mainfds.udp, buff, 7, 0, NULL, NULL);
-			printf("%s\n", buff);
-		}
+    if(type != 1)
+    {
+      if (FD_ISSET(mainfds.udp, &sock_set))
+		    {
+          recvfrom(mainfds.udp, buff, 7, 0, NULL, NULL);
+			    printf("%s\n", buff);
+		    }
+    }
 
     //Unknown talking
     if (FD_ISSET(mainfds.listen, &sock_set))
 		{
       //Accept the new connection
-      if((newfd = accept(mainfds.listen,(struct sockaddr*)&addr,&addrlen)) != 0)
+      if((newfd = accept(mainfds.listen,(struct sockaddr*)&addr,&addrlen)) == -1)
+        exit(1);
+
+      if((n = read (newfd,buffer,VETOR_SIZE))!=0)
       {
-
-        if(newfd==-1)
-          exit(1); //error
-
-        n = read (newfd,buffer,VETOR_SIZE);
 
         if(n==-1)
         {
@@ -235,15 +230,15 @@ all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
           exit(1);//error
         }
 
-
         //Se for um pedido de entrada no anel
         if(strstr(buffer,"NEW")!=NULL)
         {
           //First connection of the new ring
-          if(firstfriend==-1)
+          if(type ==-1)
           {
             mainfds.pre=newfd;
             myserver = Message_Analysis (buffer,myserver,-1);
+
             //Excreve 2 sucessor no predecessor
             n=sprintf(buffer,"SUCC %d %d.%s %d.%s\n", myserver->succ_key, myserver->succ_key,
             myserver->Prev_info.IP,myserver->succ_key,myserver->Prev_info.port);
@@ -272,7 +267,7 @@ all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
               exit(1);//error
             }
 
-            firstfriend=0;
+            type=0;
             //close(mainfds.pre);
             printf("FIZ TUDO\n");
           }
@@ -304,15 +299,53 @@ all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
               printf("write error\n");
               exit(1);//error
             }
+          }
+        }
+        if(strstr(buffer,"SUCCCONF\n")!=NULL)
+        {
+          if(type==1)
+          {
+            if((n = read (newfd,buffer2,VETOR_SIZE))!=0)
+            {
 
-            //Mandar mensagem ao sucessor a perguntar se o sucessor dele se mantem ou nao!!!!(caso 2 servidores
-            //e entra um novo- provoca alteracao do 2 sucessor)
+              if(n==-1)
+              exit(1);//error
+              printf("JA estou ca\n");
+
+              //We are the second node so we have all we need already
+              if(strstr(buffer2,"FIRST\n")!=NULL)
+              {
+                strcpy(myserver->SecondNext_info.IP,myserver->Myinfo.IP);
+                strcpy(myserver->SecondNext_info.port,myserver->Myinfo.port);
+                strcpy(myserver->Prev_info.IP,myserver->Next_info.IP);
+                strcpy(myserver->Prev_info.port,myserver->Next_info.port);
+                mainfds.pre=newfd;
+                type=0;
+              }
+              //We are at least the 3rd node, lets save all the info.
+              if(strstr(buffer2,"SUCC")!=NULL)
+              {
+                myserver = Message_Analysis (buffer2,myserver,0);
+                mainfds.pre=newfd;
+                type=0;
+              }
+            }
+            else
+            {
+              close(newfd);
+                exit(1);
+            }
           }
         }
       }
+      //If what it reads is incorret, maybe that's not our conexion
+    /*  else
+        close(newfd);*/
 		}
-  if(firstfriend !=-1)
-  {    //Predecessor is talking
+    //Ring with at least 2 nodes
+    if(type == 0 )
+    {
+      //Predecessor is talking
       if (FD_ISSET(mainfds.pre, &sock_set))
       {
         if( (n = read (mainfds.pre,buffer, VETOR_SIZE)) != 0)
@@ -322,12 +355,15 @@ all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
 
           if(strstr(buffer,"OLA")!=NULL)
             write(1,buffer,n);
-          }
+        }
       }
-
+    }
+    //The ring node has a successor
+    if(type != -1)
+    {
       //Successor is talking
       if (FD_ISSET(mainfds.next, &sock_set))
-		  {
+	    {
         //Recebe algo do sucessor
         if((n = read (mainfds.next,buffer, VETOR_SIZE)) != 0)
         {
@@ -343,6 +379,7 @@ all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
           {
             //Encerra sessão com antigo sucessor
             close(mainfds.next);
+
             //The successor becomes the Second Successor
             strcpy(myserver->SecondNext_info.IP,myserver->Next_info.IP);
             strcpy(myserver->SecondNext_info.port,myserver->Next_info.port);
@@ -381,11 +418,13 @@ all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
             exit(1);//error
             }
           }
+          //Auxiliar function TEMPORARY
           if(strstr(buffer,"OLA")!=NULL)
             write(1,buffer,n);
         }
 		  }
     }
+
   }while(myserver->inRing != false);
 
   return myserver;
@@ -394,7 +433,6 @@ all_info* Server_Heart(all_info* myserver, int type, ringfd mainfds)
 ringfd Sentry_Startup(all_info** myserver)
 {
   char buffer[VETOR_SIZE];
-  char buffer2[VETOR_SIZE];
 
   ringfd allfds;
   allfds.pre=0;
@@ -403,14 +441,11 @@ ringfd Sentry_Startup(all_info** myserver)
   allfds.udp=0;
 
   int n;
-  int newfd=0, stop=-1;
+  int stop=-1;
 
-  struct sockaddr_in addr;
-  socklen_t addrlen;
-
+  allfds.listen = init_TCP_listen((*myserver)->Myinfo.port);
   //Connect to the successor
   allfds.next = TCP_InitnConect( (*myserver)->Next_info.IP, (*myserver)->Next_info.port);
-  allfds.listen = init_TCP_listen((*myserver)->Myinfo.port);
 
   //write ex: NEW 8 8.IP 8.TCP with his data
   n=sprintf(buffer,"NEW %d %d.%s %d.%s\n", (*myserver)->key, (*myserver)->key,
@@ -424,88 +459,8 @@ ringfd Sentry_Startup(all_info** myserver)
     printf("write error\n");
     exit(1);//error
   }
-  while(stop!=0)
-  {
-    //Expects to read the 2ºsucc information from the sucessor
-    if((n = read (allfds.next,buffer,VETOR_SIZE)!=0))
-    {
-      if(n==-1)
-      {
-        printf("Read error\n");
-        exit(1);//error
-      }
-
-    //eg: SUCC 12 12.IP 12.TCP - 2º Sucessor
-      if(strstr(buffer,"SUCC")!=NULL)
-      {
-        (*myserver)=Message_Analysis(buffer, (*myserver),2);
-        stop=0;
-      }
-    }
-  }
-
   //First Part set!!!!
-  printf("Ja fiz\n");
-  stop=-1;
-
-  //Starts the second part
-  //Accept the new connection
-  while(stop!=0)
-  {
-    if((newfd = accept(allfds.listen,(struct sockaddr*)&addr,&addrlen))==-1)
-      exit(1); //error
-
-    if( (n = read (newfd,buffer,VETOR_SIZE))!=0)
-    {
-      if(n==-1)
-      {
-        printf("Read error\n");
-        exit(1);//error
-      }
-      //The connection we were expecting
-      if(strstr(buffer,"SUCCCONF\n") !=NULL)
-      {
-        allfds.pre=newfd;
-
-        if((n = read (allfds.pre,buffer2,VETOR_SIZE))!=0)
-        {
-
-          if(n==-1)
-          exit(1);//error
-          printf("JA estou ca\n");
-
-          //We are the second node so we have all we need already
-          if(strstr(buffer2,"FIRST\n")!=NULL)
-          {
-            strcpy((*myserver)->SecondNext_info.IP,(*myserver)->Myinfo.IP);
-            strcpy((*myserver)->SecondNext_info.port,(*myserver)->Myinfo.port);
-            strcpy((*myserver)->Prev_info.IP,(*myserver)->Next_info.IP);
-            strcpy((*myserver)->Prev_info.port,(*myserver)->Next_info.port);
-
-          stop=0;
-          }
-          //We are at least the 3rd node, lets save all the info.
-          if(strstr(buffer2,"SUCC")!=NULL)
-          {
-            (*myserver) = Message_Analysis (buffer2,(*myserver),0);
-            stop=0;
-          }
-        }
-      }
-    }
-      //if this was a mistaken call, lets close and try again
-    if(stop != 0)
-    {
-      printf("Erro na conexao ao pre\n");
-      close(newfd);
-      exit(1);
-    }
-  }
-
-
-
   (*myserver)->inRing=true;
 
-  printf("CHEGUEI!\n");
   return allfds;
 }
