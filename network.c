@@ -36,11 +36,10 @@ void setnonblocking(int sock){
     exit(1);
 }
 
-int add_fd(fd_set* read_set, fd_set* write_set, ringfd active_fd){
+int add_read_fd(fd_set* read_set, ringfd active_fd){
   int max_fd = 0;
 
   FD_ZERO(read_set);
-  FD_ZERO(write_set);
   FD_SET(STDIN_FILENO, read_set);
   if(active_fd.listen){
     FD_SET(active_fd.listen, read_set);
@@ -48,24 +47,31 @@ int add_fd(fd_set* read_set, fd_set* write_set, ringfd active_fd){
   }
   if (active_fd.udp){
     FD_SET(active_fd.udp, read_set);
-    //FD_SET(active_fd.udp, write_set);
     max_fd = max(max_fd,active_fd.udp);
   }
   if(active_fd.next){
     FD_SET(active_fd.next, read_set);
-    FD_SET(active_fd.next, write_set);
     max_fd = max(max_fd,active_fd.next);
   }
   if(active_fd.prev){
     FD_SET(active_fd.prev, read_set);
-    FD_SET(active_fd.prev, write_set);
     max_fd = max(max_fd,active_fd.prev);
   }
   if (active_fd.temp){
     FD_SET(active_fd.temp, read_set);
-    FD_SET(active_fd.temp, write_set);
     max_fd = max(max_fd,active_fd.temp);
   }
+  return max_fd;
+}
+
+int add_write_fd(int pending, fd_set* write_set, int fd, int max_fd){
+  FD_ZERO(write_set);
+  if(pending){
+    FD_SET(fd, write_set);
+    // printf("added to write_set\n");
+    return max(max_fd,fd);
+  }
+  //printf("removed from write_set\n");
   return max_fd;
 }
 
@@ -153,7 +159,7 @@ void init_UDPcl(all_info* sv_info){
 int init_TCPcl(all_info* sv_info){
   int fd,errcode;
   int reuse_addr = 1;
-  ssize_t n;
+  
   struct addrinfo hints,*res;
 
   fd=socket(AF_INET,SOCK_STREAM,0);
@@ -172,7 +178,7 @@ int init_TCPcl(all_info* sv_info){
   if(errcode!=0){
     exit(1);//error
   }
-  n=connect(fd,res->ai_addr,res->ai_addrlen);
+  connect(fd,res->ai_addr,res->ai_addrlen);
   printf("trying to connect\n");
 
   /*
