@@ -31,7 +31,7 @@ int main(int argc, char * argv[])
 
   if(sigaction(SIGPIPE,&act,NULL)==-1)
     exit(1);
-    
+
   server = MemoryAlloc();
   server = startup(argc, argv, server);
 
@@ -51,7 +51,7 @@ int main(int argc, char * argv[])
           {
             server=Choose_key(server);
             server->inRing = true;
-            server = Server_Heart(server, 0, allfds);
+            server = Server_Heart(server, -1, allfds);
           }
           else
           {
@@ -67,7 +67,6 @@ int main(int argc, char * argv[])
 
         case 3:
           server = StartSucci(server);
-          allfds = Sentry_Startup(&server);
           server = Server_Heart(server, 1, allfds);
 
           allfds.pre=0;
