@@ -21,7 +21,7 @@ int init_TCPcl(all_info*);
 void send_message(int, const char*);
 int get_incoming(int);
 int get_message(int,char*);
-int isAlive(int, fd_set*);
+int isAlive(int);
 
 
 

@@ -98,7 +98,6 @@ int main(int argc, char* argv[])
           show(server);
     		break;
     		case 6:
-        isAlive(active_fd.prev, &read_set);
     		break;
     		case 7:
           exit(0);

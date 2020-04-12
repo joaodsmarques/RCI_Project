@@ -244,16 +244,14 @@ int get_message(int fd, char* msg){
   }
 }
 
-int isAlive(int fd, fd_set *read_set){
+int isAlive(int fd){
 
   char buff[50];
 
-  if(FD_ISSET(fd, read_set)){
-    if(read(fd,buff,sizeof(buff)) < 0){
+    if(read(fd,buff,sizeof(buff)) <= 0){
       printf("IS DEAD\n");
       return 0;
     } 
-  }
   printf("is alive\n");
   return 1;
 }
