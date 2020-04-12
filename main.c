@@ -59,7 +59,6 @@ int main(int argc, char* argv[])
             server.second_succ_key = server.key;
   					active_fd.udp = init_UDPsv(&server);
             active_fd.listen = init_TCP_Listen(&server);
-            active_fd.next=0;
             server.inRing = true;
       		}
           clrscreen();
@@ -85,20 +84,12 @@ int main(int argc, char* argv[])
             Display_menu();
     		break;
     		case 4://LEAVE
-        if(server.inRing)
-        {
-          close(active_fd.next);
-          close(active_fd.prev);
-          close(active_fd.udp);
-          close(active_fd.listen);
-          close(active_fd.temp);
-          active_fd.next=0;
-          active_fd.prev=0;
-          active_fd.udp=0;
-          active_fd.listen=0;
-          active_fd.temp=0;
-          server.inRing = false;
+        if(server.inRing){
+          close_all(&active_fd, &server);
+          printf("%d\n", server.inRing);
         }
+        clrscreen();
+        Display_menu();
     		break;
     		case 5: //SHOW
           show(server);
@@ -135,30 +126,37 @@ int main(int argc, char* argv[])
     if(server.inRing && FD_ISSET(active_fd.listen, &read_set))
       active_fd.temp = get_incoming(active_fd.listen);
 
-    //Receinving a message from an Unknown node
+    //Receiving a message from an Unknown node
     if(server.inRing && active_fd.temp && FD_ISSET(active_fd.temp, &read_set))
     {
       get_message(active_fd.temp, buff);
       //SUCCONF received
       if(strstr(buff,"SUCCCONF")!= NULL)
       {          //If there is only one-prev is 0
-          if(active_fd.prev==0)
+          if(!active_fd.prev)
           {
             active_fd.prev=active_fd.temp;
+            active_fd.temp=0;
           }
           else
           {
-            //O servidor saiu. este será o nosso novo pre-por tudo pronto para tal
+            printf("o meu prev saiu\n");
+            close(active_fd.prev);
+            active_fd.prev=active_fd.temp;
+            active_fd.temp=0;
+            create_msg(buff,server, "SUCC");
+            send_message(active_fd.prev, buff);
           }
       }
       //NEW received
       else if(strstr(buff,"NEW ") !=NULL)
       {
         //If there more than one server
-        if(active_fd.next!=0)
+        if(active_fd.prev) 
         {
           //Send info (of his new succ) to current prev, before switching*/
           //Assume the new connection as predecessor and breaks up with the previous pred
+          strcat(buff,"\n"); //<--ITS NEEDED ONLY IN THIS CASE. WILL WORK ON IT LATER
           send_message(active_fd.prev, buff);
           close(active_fd.prev);
           active_fd.prev = active_fd.temp;
@@ -193,6 +191,8 @@ int main(int argc, char* argv[])
       }
     }
 
+
+
     //////////CLIENT SIDE HANDLING/////////
     ///////////////////////////////////////
     ///////////////////////////////////////
@@ -209,12 +209,15 @@ int main(int argc, char* argv[])
         strcpy(server.Next_info.port, server.SecondNext_info.port);
         server.succ_key=server.second_succ_key;
         active_fd.next = init_TCP_connect(&server);
+        create_msg(buff, server, "SUCC");
+        send_message(active_fd.prev,buff);
+        send_message(active_fd.next,"SUCCCONF\n");
+
       }
       //Let's receive the Second successor
       if(strstr(buff,"SUCC ")!=NULL)
       {
         parse_new(buff, &(server.SecondNext_info), &(server.second_succ_key));
-        //Give info to next, so next can inform his prev about me
       }
       else if(strstr(buff,"NEW ")!= NULL)
       {
@@ -232,5 +235,11 @@ int main(int argc, char* argv[])
       }
     }
 	}
+
+
+
+
+
+
   return 0;
 }

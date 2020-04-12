@@ -19,6 +19,7 @@ int init_TCP_connect(all_info*);
 void send_message(int, const char*);
 int get_incoming(int);
 int get_message(int,char*);
+void close_all(ringfd*, all_info*);
 int isAlive(int, fd_set*);
 
 

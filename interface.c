@@ -119,13 +119,14 @@ void mystrcat(char* result,char* first,char* secnd,char* thrd,char* fourth,char*
     strcat(result, " ");
     strcat(result, fifth);
   }
-  //strcat(result,"\n");
+  strcat(result,"\n");
 }
 
 void create_msg(char* msg, all_info sv_info, const char* type)
 {
   char key[12];
-  msg[0]='\0';
+  memset(key,'\0',12);
+  memset(msg,'\0',50);
   if (!strcmp(type, "SUCC"))
   {
     sprintf(key,"%d",sv_info.succ_key);
@@ -147,7 +148,7 @@ void parse_new(char* msg, server_info* server, int* key){
   strtok(aux," ");
   *key = atoi(strtok(NULL, " "));
   strcpy(server->IP, strtok(NULL," "));
-  strcpy(server->port, strtok(NULL," "));
+  strcpy(server->port, strtok(NULL,"\n"));
   free(aux);
   return;
 }

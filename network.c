@@ -61,12 +61,13 @@ int add_read_fd(fd_set* read_set, ringfd active_fd){
 int init_UDPsv(all_info* _server){
 
   int sockfd,n,errcode;
+  int reuse_addr = 1;
   struct addrinfo hints, *res;
 
   sockfd = socket(AF_INET, SOCK_DGRAM, 0); //UDP SOCKET
   if (sockfd==-1)
     exit(1); //error
-
+  setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr));
   memset(&hints,0,sizeof hints);
   hints.ai_family=AF_INET; //IPV4
   hints.ai_socktype=SOCK_DGRAM;//TCP SOCKET
@@ -92,11 +93,13 @@ int init_TCP_Listen(all_info* _server)
 {
   int errcode, newfd;
   int n;
+  int reuse_addr =1;
   struct addrinfo  hints;
   struct addrinfo * res;
 
 
   newfd=socket(AF_INET,SOCK_STREAM,0); //TCP socket
+  setsockopt(newfd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr));
 
   if (newfd==-1)
     exit(1); //error
@@ -131,16 +134,14 @@ int init_TCP_Listen(all_info* _server)
 int init_TCP_connect(all_info* sv_info)
 {
   int fd,errcode;
+  int reuse_addr=1;
   ssize_t n;
   struct addrinfo hints,*res;
-
-
-
   fd=socket(AF_INET,SOCK_STREAM,0);
 
   if (fd==-1)
     exit(1); //error
-
+  setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr));
   memset(&hints,0,sizeof hints);
   hints.ai_family=AF_INET;//TCP socket
   hints.ai_socktype=SOCK_STREAM;//IPv4
@@ -150,9 +151,9 @@ int init_TCP_connect(all_info* sv_info)
 
   if(errcode!=0)
     exit(1);//error
-
-
+printf("waiting connection\n");
   n= connect (fd,res->ai_addr,res->ai_addrlen);
+printf("got it\n");
 
   if(n==-1)
     exit(1);//error
@@ -169,16 +170,18 @@ void send_message(int fd, const char* msg){
     printf("write error\n");
     exit(1);//error
   }
-  printf("sent %s\n", msg);
+  printf("sent: %s", msg);
 }
 
 int get_incoming(int fd){
   int fd_aux;
+  int reuse_addr=1;
   struct sockaddr_in addr;
   socklen_t addrlen;
 
   if((fd_aux = accept(fd,(struct sockaddr*)&addr,&addrlen)) != -1)
   {
+    setsockopt(fd_aux, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr));
     printf("connected\n");
     return fd_aux;
   }
@@ -211,11 +214,38 @@ int get_message(int fd, char* msg){
   }
   else
   {
+
     strcpy(msg, strtok(buffer,"\n"));
     printf("read: %s\n", msg);
     free(buffer);
     return 1;
   }
+}
+
+
+void close_all(ringfd* active_fd, all_info* server){
+
+
+  if(active_fd->next)
+    close(active_fd->next);
+  if (active_fd->prev)
+    close(active_fd->prev);
+  if(active_fd->prev)
+    close(active_fd->udp);
+  if(active_fd->listen)
+    close(active_fd->listen);
+  if(active_fd->temp)
+    close(active_fd->temp);
+
+  strcpy(server->Next_info.IP, server->Myinfo.IP);
+  strcpy(server->Next_info.port, server->Myinfo.port);
+  strcpy(server->SecondNext_info.IP, server->Myinfo.IP);
+  strcpy(server->SecondNext_info.port, server->Myinfo.port);
+  server->inRing = false;
+  active_fd->prev=active_fd->next=active_fd->udp=active_fd->listen=active_fd->temp=0;
+  server->key=server->succ_key=server->second_succ_key=-1;
+
+  
 }
 
 int isAlive(int fd, fd_set *read_set){
