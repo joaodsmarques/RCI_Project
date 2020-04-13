@@ -24,4 +24,5 @@ int isAlive(int, fd_set*);
 
 void Find_key(all_info,char*, ringfd);
 
+void Start_Search();
 #endif

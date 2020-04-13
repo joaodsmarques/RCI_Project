@@ -187,7 +187,7 @@ int Key_Distance(int find_key, int my_key,int succ_key)
     return 1;
 
 }
-
+//Receives the final message and decomponds it into the information it is needed to be shown
 void Show_where_is_key(char* message)
 {
   char*IP;
@@ -208,27 +208,4 @@ void Show_where_is_key(char* message)
   printf("Key:%d\n", node_key);
   printf("=============================================\n");
   printf("(Press Enter to return to the main menu\n)");
-}
-
-void Start_Search(char* msg,all_info _server)
-{
-  memset(msg,'\0',50);
-
-  int key=0;
-
-  char buffer[VETOR_SIZE];
-  printf("Enter server key:\n");
-
-  do{
-    if(key <= 0 || key> RING_SIZE)
-      printf("Key must be between the server limits(0-%d)\n",RING_SIZE);
-
-    if(!fgets(buffer, VETOR_SIZE, stdin))
-      exit(1);
-
-
-  }while (sscanf(buffer,"%d", &key) != 1 ||  key <= 0 || key > RING_SIZE);
-
-  sprintf(msg,"FND %d %d %s %s\n",key, _server.key,_server.Myinfo.IP, _server.Myinfo.port);
-
 }

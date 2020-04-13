@@ -25,6 +25,8 @@ int main(int argc, char* argv[])
   fd_set read_set;
   all_info server;
 
+  struct sockaddr_in addr;
+  socklen_t addrlen;
   //Prevent SIGPIPE Signal
   struct sigaction act;
   memset(&act,0,sizeof act);
@@ -65,8 +67,14 @@ int main(int argc, char* argv[])
           Display_menu();
     		break;
     		case 2:  //ENTRY i
-        if(server.inRing)
-          printf("You must leave the Ring First!!\n");
+          if(!server.inRing)
+            printf("You must leave the Ring First!!\n");
+          else
+          {
+            active_fd.udp = init_UDPsv(&server);
+            active_fd.listen = init_TCP_Listen(&server);
+            Start_Search(server);
+          }
     		break;
     		case 3:
           if(!server.inRing)
@@ -105,7 +113,7 @@ int main(int argc, char* argv[])
             printf("You must enter in a Ring First!!\n");
           else
           {
-            Start_Search(buff,server);
+            Start_Search(server);
             printf("Encontra:%s\n",buff);
             Find_key(server,buff, active_fd);
             memset(buff,'\0',50);
@@ -128,19 +136,25 @@ int main(int argc, char* argv[])
     /////////////////////////////////////
 
 		//For UDP message received
-    /*
+
 		if(server.inRing && FD_ISSET(active_fd.udp, &read_set))
 		{
 			//usado para testar, dps vai fora
-			recvfrom(active_fd.udp, buff, 42, 0, NULL, NULL);
+			recvfrom(active_fd.udp, buff, 50, 0, (struct sockaddr*)&addr,&addrlen);
 			printf("%s\n", buff);
-		}*/
-    printf("Sítio 1\n");
+      if(strstr(buff,"ENFD ")!=NULL)
+      {
+        //Fazer a mensagem
+        //Invocar findk com atencao as mudanças q sejam precisas Fazer
+        //Receber a chave e reenviar por udp
+      }
+		}
+
     //New tcp connection incoming
     if(server.inRing && FD_ISSET(active_fd.listen, &read_set))
       active_fd.temp = get_incoming(active_fd.listen);
 
-      printf("Sítio 2\n");
+
     //If connection is made and there is something to read
     if(server.inRing && active_fd.next && FD_ISSET(active_fd.next, &read_set))
     {
@@ -178,10 +192,15 @@ int main(int argc, char* argv[])
         send_message(active_fd.next,"SUCCCONF\n");
       }
     }
-    printf("Sítio 3\n");
+
     if(server.inRing && active_fd.prev && FD_ISSET(active_fd.prev, &read_set))
     {
-      get_message(active_fd.prev, buff);
+      if(!get_message(active_fd.prev, buff))
+      {
+        close(active_fd.prev);
+        active_fd.prev=0;
+        printf("Vi te a sair Cafagestji\n");
+      }
 
       if(strstr(buff,"FND ")!=NULL)
       {
@@ -255,9 +274,10 @@ int main(int argc, char* argv[])
       else
       {
         printf("unexpected message: abort\n");
-        if(active_fd.prev == active_fd.temp)
-          active_fd.prev = 0;
+        /*if(active_fd.prev == active_fd.temp)
+          active_fd.prev = 0;*/
         close(active_fd.temp);
+        active_fd.temp=0;
       }
     }
   }
