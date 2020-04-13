@@ -1,8 +1,6 @@
 #include "interface.h"
 #include "structs_n_main.h"
-#include <stdio.h>
-#include <stdbool.h>
-#include <strings.h>
+
 
 void print(const char* msg){
   printf("%s\n", msg);
@@ -39,14 +37,16 @@ int new_i(){
   printf("Enter server key:\n");
 
   do{
+    if(key <= 0 || key> RING_SIZE)
+      printf("Key must be between the server limits(0-%d)\n",RING_SIZE);
     if(!fgets(buffer, VETOR_SIZE, stdin))
       exit(1);
-    if(key < 0)
-      printf("key must be greater than 0\n");
-  }while (sscanf(buffer,"%d", &key) != 1 ||  key < 0);
+
+  }while (sscanf(buffer,"%d", &key) != 1 ||  key <= 0 || key > RING_SIZE);
   return key;
 }
 
+//Definir limites para numero de chaves pelo ring size
 void sentry(all_info* sv_info){
   char buffer[VETOR_SIZE];
   sv_info->key=new_i();
@@ -65,7 +65,7 @@ void sentry(all_info* sv_info){
     exit(0);
   strcpy(sv_info->Next_info.port,strtok(buffer, "\n"));
 }
-
+//Definir limites para numero de chaves pelo ring size
 void entry_i(all_info* sv_info){
   char buffer[VETOR_SIZE];
   sv_info->key=new_i();
@@ -119,13 +119,14 @@ void mystrcat(char* result,char* first,char* secnd,char* thrd,char* fourth,char*
     strcat(result, " ");
     strcat(result, fifth);
   }
-  //strcat(result,"\n");
+  strcat(result,"\n");
 }
 
 void create_msg(char* msg, all_info sv_info, const char* type)
 {
   char key[12];
-  msg[0]='\0';
+  memset(key,'\0',12);
+  memset(msg,'\0',50);
   if (!strcmp(type, "SUCC"))
   {
     sprintf(key,"%d",sv_info.succ_key);
@@ -135,6 +136,11 @@ void create_msg(char* msg, all_info sv_info, const char* type)
   {
     sprintf(key,"%d",sv_info.key);
     mystrcat(msg,"NEW", key, sv_info.Myinfo.IP, sv_info.Myinfo.port, NULL);
+  }
+  else if(!strcmp(type, "KEY"))
+  { //Message telling the key is in the successor.Second_key was changed temporarly to the key we are finding
+    sprintf(msg,"KEY %d %d %s %s\n",sv_info.second_succ_key, sv_info.succ_key,
+    sv_info.Next_info.IP,sv_info.Next_info.port);
   }
 }
 
@@ -147,7 +153,82 @@ void parse_new(char* msg, server_info* server, int* key){
   strtok(aux," ");
   *key = atoi(strtok(NULL, " "));
   strcpy(server->IP, strtok(NULL," "));
-  strcpy(server->port, strtok(NULL," "));
+  strcpy(server->port, strtok(NULL,"\n"));
   free(aux);
   return;
+}
+
+//Return values:
+//0-If the successor does not have the Key_
+//1-The sucessor has the key
+int Key_Distance(int find_key, int my_key,int succ_key)
+{
+  int diff_succ=0;
+  int my_diff=0;
+
+  //eg Ringsize 16: d(9,3)=10
+  if(find_key>my_key)
+    my_diff=(RING_SIZE+my_key)-find_key;
+
+  else
+    my_diff=my_key-find_key;
+
+  if(find_key>succ_key)
+    diff_succ=(RING_SIZE+succ_key)-find_key;
+
+  else
+    diff_succ=succ_key-find_key;
+
+  //The key is not in my successor
+  if(diff_succ>my_diff)
+    return 0;
+  //My successor has the key
+  else
+    return 1;
+
+}
+
+void Show_where_is_key(char* message)
+{
+  char*IP;
+  char*PORT;
+  int find_key=0;
+  int node_key=0;
+
+  strtok(message," ");
+  find_key=atoi(strtok(NULL," "));
+  node_key=atoi(strtok(NULL," "));
+  IP = strtok(NULL," ");
+  PORT = strtok(NULL,"\n");
+  printf("=============================================\n");
+  printf("I FOUND WHERE THE KEY %d IS KEPT\n",find_key);
+  printf("=============================================\n");
+  printf("Server who keeps it:\n");
+  printf("IP & PORT: %s::%s\n",IP,PORT);
+  printf("Key:%d\n", node_key);
+  printf("=============================================\n");
+  printf("(Press Enter to return to the main menu\n)");
+}
+
+void Start_Search(char* msg,all_info _server)
+{
+  memset(msg,'\0',50);
+
+  int key=0;
+
+  char buffer[VETOR_SIZE];
+  printf("Enter server key:\n");
+
+  do{
+    if(key <= 0 || key> RING_SIZE)
+      printf("Key must be between the server limits(0-%d)\n",RING_SIZE);
+
+    if(!fgets(buffer, VETOR_SIZE, stdin))
+      exit(1);
+
+
+  }while (sscanf(buffer,"%d", &key) != 1 ||  key <= 0 || key > RING_SIZE);
+
+  sprintf(msg,"FND %d %d %s %s\n",key, _server.key,_server.Myinfo.IP, _server.Myinfo.port);
+
 }

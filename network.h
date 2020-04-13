@@ -15,12 +15,13 @@ int add_read_fd(fd_set*, ringfd);
 //ATENCAO A ESTE
 int init_UDPsv(all_info*);
 int init_TCP_Listen(all_info*);
-int init_TCP_connect(all_info*);
+int init_TCP_connect(char*, char*);
 void send_message(int, const char*);
 int get_incoming(int);
 int get_message(int,char*);
+void close_all(ringfd*, all_info*);
 int isAlive(int, fd_set*);
 
-
+void Find_key(all_info,char*, ringfd);
 
 #endif

@@ -19,6 +19,7 @@
 #define IP_SIZE 20
 #define VETOR_SIZE 100
 #define PORT_SIZE 10
+#define RING_SIZE 16
 #define max(A,B) ((A)>=(B)?(A):(B))
 
 typedef struct

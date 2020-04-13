@@ -59,7 +59,6 @@ int main(int argc, char* argv[])
             server.second_succ_key = server.key;
   					active_fd.udp = init_UDPsv(&server);
             active_fd.listen = init_TCP_Listen(&server);
-            active_fd.next=0;
             server.inRing = true;
       		}
           clrscreen();
@@ -75,36 +74,42 @@ int main(int argc, char* argv[])
             sentry(&server);
             active_fd.udp = init_UDPsv(&server);
             active_fd.listen = init_TCP_Listen(&server);
-            active_fd.next = init_TCP_connect(&server); //connects to successor
+            active_fd.next = init_TCP_connect(server.Next_info.IP,server.Next_info.port); //connects to successor
             //Sends the first message to the successor
             create_msg(buff, server, "NEW");
             send_message(active_fd.next, buff);
             server.inRing = true;
-          }
             clrscreen();
             Display_menu();
+          }
+          else
+          {
+            clrscreen();
+            printf("You must leave the current ring first\n");
+            Display_menu();
+          }
     		break;
     		case 4://LEAVE
-        if(server.inRing)
-        {
-          close(active_fd.next);
-          close(active_fd.prev);
-          close(active_fd.udp);
-          close(active_fd.listen);
-          close(active_fd.temp);
-          active_fd.next=0;
-          active_fd.prev=0;
-          active_fd.udp=0;
-          active_fd.listen=0;
-          active_fd.temp=0;
-          server.inRing = false;
+        if(server.inRing){
+          close_all(&active_fd, &server);
+          printf("%d\n", server.inRing);
         }
+        clrscreen();
+        Display_menu();
     		break;
     		case 5: //SHOW
           show(server);
     		break;
     		case 6:
-        isAlive(active_fd.prev, &read_set);
+          if(!server.inRing)
+            printf("You must enter in a Ring First!!\n");
+          else
+          {
+            Start_Search(buff,server);
+            printf("Encontra:%s\n",buff);
+            Find_key(server,buff, active_fd);
+            memset(buff,'\0',50);
+          }
     		break;
     		case 7:
           if(server.inRing)
@@ -130,35 +135,91 @@ int main(int argc, char* argv[])
 			recvfrom(active_fd.udp, buff, 42, 0, NULL, NULL);
 			printf("%s\n", buff);
 		}*/
-
+    printf("Sítio 1\n");
     //New tcp connection incoming
     if(server.inRing && FD_ISSET(active_fd.listen, &read_set))
       active_fd.temp = get_incoming(active_fd.listen);
 
-    //Receinving a message from an Unknown node
+      printf("Sítio 2\n");
+    //If connection is made and there is something to read
+    if(server.inRing && active_fd.next && FD_ISSET(active_fd.next, &read_set))
+    {
+      //If read returns 0, the connections was lost
+      if(!get_message(active_fd.next,buff))
+      {
+        close(active_fd.next);
+        printf("Vi te a sair Cafagestji\n");
+        //CLEAN SECOND SUCC
+        strcpy(server.Next_info.port, server.SecondNext_info.port);
+        server.succ_key=server.second_succ_key;
+        active_fd.next = init_TCP_connect(server.Next_info.IP,server.Next_info.port);
+        create_msg(buff, server, "SUCC");
+        send_message(active_fd.prev,buff);
+        send_message(active_fd.next,"SUCCCONF\n");
+
+      }
+      //Let's receive the Second successor
+      if(strstr(buff,"SUCC ")!=NULL)
+      {
+        parse_new(buff, &(server.SecondNext_info), &(server.second_succ_key));
+      }
+      else if(strstr(buff,"NEW ")!= NULL)
+      {
+        //Saving the new successor data
+        strcpy(server.SecondNext_info.IP,server.Next_info.IP);
+        strcpy(server.SecondNext_info.port,server.Next_info.port);
+        server.second_succ_key=server.succ_key;
+        parse_new(buff, &(server.Next_info), &(server.succ_key));
+        //Send to the predecessor his second successor
+        create_msg(buff, server, "SUCC");
+        send_message(active_fd.prev, buff);
+        close(active_fd.next);
+        active_fd.next = init_TCP_connect(server.Next_info.IP,server.Next_info.port);
+        send_message(active_fd.next,"SUCCCONF\n");
+      }
+    }
+    printf("Sítio 3\n");
+    if(server.inRing && active_fd.prev && FD_ISSET(active_fd.prev, &read_set))
+    {
+      get_message(active_fd.prev, buff);
+
+      if(strstr(buff,"FND ")!=NULL)
+      {
+        Find_key(server,buff, active_fd);
+      }
+    }
+
+    //Receiving a message from an Unknown node
     if(server.inRing && active_fd.temp && FD_ISSET(active_fd.temp, &read_set))
     {
       get_message(active_fd.temp, buff);
       //SUCCONF received
       if(strstr(buff,"SUCCCONF")!= NULL)
       {          //If there is only one-prev is 0
-          if(active_fd.prev==0)
+          if(!active_fd.prev)
           {
             active_fd.prev=active_fd.temp;
+            active_fd.temp=0;
           }
           else
           {
-            //O servidor saiu. este será o nosso novo pre-por tudo pronto para tal
+            printf("o meu prev saiu\n");
+            close(active_fd.prev);
+            active_fd.prev=active_fd.temp;
+            active_fd.temp=0;
+            create_msg(buff,server, "SUCC");
+            send_message(active_fd.prev, buff);
           }
       }
       //NEW received
       else if(strstr(buff,"NEW ") !=NULL)
       {
         //If there more than one server
-        if(active_fd.next!=0)
+        if(active_fd.prev)
         {
           //Send info (of his new succ) to current prev, before switching*/
           //Assume the new connection as predecessor and breaks up with the previous pred
+          strcat(buff,"\n"); //<--ITS NEEDED ONLY IN THIS CASE. WILL WORK ON IT LATER
           send_message(active_fd.prev, buff);
           close(active_fd.prev);
           active_fd.prev = active_fd.temp;
@@ -179,10 +240,17 @@ int main(int argc, char* argv[])
           create_msg(buff, server, "SUCC");
           send_message(active_fd.prev, buff);
 
-          active_fd.next = init_TCP_connect(&server);
+          active_fd.next = init_TCP_connect(server.Next_info.IP,server.Next_info.port);
           //Now the successor has to know his new predecessor
           send_message(active_fd.next,"SUCCCONF\n");
         }
+      }
+      //We are receiving the response to our key search request
+      else if(strstr(buff,"KEY ")!=NULL)
+      {
+        Show_where_is_key(buff);
+        close(active_fd.temp);
+        active_fd.temp=0;
       }
       else
       {
@@ -192,45 +260,7 @@ int main(int argc, char* argv[])
         close(active_fd.temp);
       }
     }
+  }
 
-    //////////CLIENT SIDE HANDLING/////////
-    ///////////////////////////////////////
-    ///////////////////////////////////////
-
-    //If connection is made and there is something to read
-    if(server.inRing && active_fd.next && FD_ISSET(active_fd.next, &read_set))
-    {
-      //If read returns 0, the connections was lost
-      if(!get_message(active_fd.next,buff))
-      {
-        close(active_fd.next);
-        printf("Vi te a sair Cafagestji\n");
-        //CLEAN SECOND SUCC
-        strcpy(server.Next_info.port, server.SecondNext_info.port);
-        server.succ_key=server.second_succ_key;
-        active_fd.next = init_TCP_connect(&server);
-      }
-      //Let's receive the Second successor
-      if(strstr(buff,"SUCC ")!=NULL)
-      {
-        parse_new(buff, &(server.SecondNext_info), &(server.second_succ_key));
-        //Give info to next, so next can inform his prev about me
-      }
-      else if(strstr(buff,"NEW ")!= NULL)
-      {
-        //Saving the new successor data
-        strcpy(server.SecondNext_info.IP,server.Next_info.IP);
-        strcpy(server.SecondNext_info.port,server.Next_info.port);
-        server.second_succ_key=server.succ_key;
-        parse_new(buff, &(server.Next_info), &(server.succ_key));
-        //Send to the predecessor his second successor
-        create_msg(buff, server, "SUCC");
-        send_message(active_fd.prev, buff);
-        close(active_fd.next);
-        active_fd.next = init_TCP_connect(&server);
-        send_message(active_fd.next,"SUCCCONF\n");
-      }
-    }
-	}
   return 0;
 }

@@ -17,4 +17,8 @@ void mystrcat(char*,char*,char*,char*,char*,char*);
 void create_msg(char* msg, all_info sv_info, const char* type);
 void parse_new(char*, server_info*, int*);
 
+void Show_where_is_key(char*);
+int Key_Distance(int , int ,int );
+void Start_Search(char* ,all_info);
+
 #endif // INTERFACE_H_INCLUDED
