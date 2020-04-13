@@ -178,10 +178,15 @@ int main(int argc, char* argv[])
         send_message(active_fd.next,"SUCCCONF\n");
       }
     }
-  
+
     if(server.inRing && active_fd.prev && FD_ISSET(active_fd.prev, &read_set))
     {
-      get_message(active_fd.prev, buff);
+      if(!get_message(active_fd.prev, buff))
+      {
+        close(active_fd.prev);
+        active_fd.prev=0;
+        printf("Vi te a sair Cafagestji\n");
+      }
 
       if(strstr(buff,"FND ")!=NULL)
       {
