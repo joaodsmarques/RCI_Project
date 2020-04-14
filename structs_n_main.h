@@ -44,7 +44,6 @@ typedef struct ringfd
   int temp;
 }ringfd;
 
-//All the most used purses can be organized in a closet
 typedef struct
 {
   //My ID

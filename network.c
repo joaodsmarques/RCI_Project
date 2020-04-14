@@ -73,7 +73,6 @@ int init_UDPsv(all_info* _server){
   hints.ai_socktype=SOCK_DGRAM;//TCP SOCKET
   hints.ai_flags=AI_PASSIVE;
 
-
   errcode = getaddrinfo(NULL, _server->Myinfo.port, &hints, &res);
 
   if((errcode)!=0)
@@ -89,9 +88,31 @@ int init_UDPsv(all_info* _server){
   return sockfd;
 }
 
+int init_UDPcl(all_info* server, struct addrinfo** udp_addr)
+{
+  int sockfd,errcode;
+  int reuse_addr = 1;
+  struct addrinfo hints;
+
+  sockfd = socket(AF_INET, SOCK_DGRAM, 0); //UDP SOCKET
+  if (sockfd==-1)
+    exit(1); //error
+  setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr));
+  memset(&hints,0,sizeof hints);
+  hints.ai_family=AF_INET; //IPV4
+  hints.ai_socktype=SOCK_DGRAM;//TCP SOCKET
+
+  errcode = getaddrinfo(server->Next_info.IP, server->Next_info.port, &hints, udp_addr);
+  if((errcode)!=0)
+    exit(1); //error
+
+  return sockfd;
+}
+
 int init_TCP_Listen(all_info* _server)
 {
   int errcode, newfd;
+  int reuse_addr = 1;
   ssize_t n;
   struct addrinfo  hints;
   struct addrinfo * res;
@@ -103,6 +124,7 @@ int init_TCP_Listen(all_info* _server)
     exit(1); //error
 
   memset(&hints, 0, sizeof hints);
+  setsockopt(newfd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr));
 
   hints.ai_family=AF_INET; //IPv4
   hints.ai_socktype=SOCK_STREAM; //TCP socket
@@ -132,9 +154,12 @@ int init_TCP_Listen(all_info* _server)
 int init_TCP_connect(char* _IP, char* _port)
 {
   int fd,errcode;
+  int reuse_addr = 1;
   ssize_t n;
   struct addrinfo hints,*res;
   fd=socket(AF_INET,SOCK_STREAM,0);
+  setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr));
+
 
   if (fd==-1)
     exit(1); //error
@@ -158,6 +183,15 @@ printf("got it\n");
 
   return fd;
 }
+
+void send_udp(int fd, char* msg, struct sockaddr* addr, socklen_t addrlen){
+
+  sendto(fd, msg, strlen(msg),0, addr, addrlen);
+  printf("sent udp: %s\n", msg);
+}
+
+
+
 
 void send_message(int fd, const char* msg){
   int n;
@@ -212,7 +246,8 @@ int get_message(int fd, char* msg){
   {
 
     strcpy(msg, strtok(buffer,"\n"));
-    printf("read: %s\n", msg);
+    strcat(msg,"\n");
+    printf("read: %s", msg);
     free(buffer);
     return 1;
   }
@@ -258,7 +293,7 @@ int isAlive(int fd, fd_set *read_set){
   return 1;
 }
 
-void Find_key(all_info myserver,char* msg, ringfd activefd)
+int Find_key(all_info myserver,char* msg, ringfd activefd)
 {
 
   int find_key=-1;
@@ -274,6 +309,7 @@ void Find_key(all_info myserver,char* msg, ringfd activefd)
   if(activefd.next==0 && activefd.prev==0)
   {
     printf("I have the key!\n");
+    return 1;
   }
   else
   {
@@ -295,7 +331,6 @@ void Find_key(all_info myserver,char* msg, ringfd activefd)
       IP=strtok(NULL," ");
       PORT=strtok(NULL,"\n");
 
-      printf("ISTO %s com %s\nIst %s com %s\n",myserver.Next_info.IP,IP,myserver.Next_info.port,PORT);
       //If Im the client and my succ has the key im looking for
       if((strstr(myserver.Myinfo.IP,IP)!=NULL) && (strstr(myserver.Myinfo.port,PORT) != NULL))
       {
@@ -310,6 +345,7 @@ void Find_key(all_info myserver,char* msg, ringfd activefd)
         //The key is replaced
         myserver.second_succ_key=save_key;
           Show_where_is_key(aux);
+          return 2;
       }
       else
       {
@@ -331,6 +367,7 @@ void Find_key(all_info myserver,char* msg, ringfd activefd)
       }
     }
   }
+  return 0;
 }
 
 
