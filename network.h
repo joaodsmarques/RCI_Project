@@ -12,17 +12,17 @@
 
 void startup(int, char**, all_info*, ringfd*);
 int add_read_fd(fd_set*, ringfd);
-//ATENCAO A ESTE
 int init_UDPsv(all_info*);
+int init_UDPcl(all_info*, struct addrinfo**);
 int init_TCP_Listen(all_info*);
 int init_TCP_connect(char*, char*);
+void send_udp(int, char*, struct sockaddr*, socklen_t);
 void send_message(int, const char*);
 int get_incoming(int);
 int get_message(int,char*);
 void close_all(ringfd*, all_info*);
 int isAlive(int, fd_set*);
 
-void Find_key(all_info,char*, ringfd);
+int Find_key(all_info,char*, ringfd);
 
-void Start_Search();
 #endif

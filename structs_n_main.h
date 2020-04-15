@@ -20,6 +20,7 @@
 #define VETOR_SIZE 100
 #define PORT_SIZE 10
 #define RING_SIZE 16
+#define MSG_SIZE 50
 #define max(A,B) ((A)>=(B)?(A):(B))
 
 typedef struct
@@ -44,7 +45,6 @@ typedef struct ringfd
   int temp;
 }ringfd;
 
-//All the most used purses can be organized in a closet
 typedef struct
 {
   //My ID

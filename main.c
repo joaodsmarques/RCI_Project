@@ -19,14 +19,17 @@ Obrigado!
 int main(int argc, char* argv[])
 {
   int maxfd = 0;
+  int udp_key;
   char buff[50];
-  //struct timeval timeout;
+  struct addrinfo* udp_addr;
+  struct sockaddr_in addr;
+  socklen_t addrlen;
+  struct timeval *timeout=NULL;
+  struct timeval udp_timeout;
   ringfd active_fd;
   fd_set read_set;
   all_info server;
 
-  struct sockaddr_in addr;
-  socklen_t addrlen;
   //Prevent SIGPIPE Signal
   struct sigaction act;
   memset(&act,0,sizeof act);
@@ -36,7 +39,6 @@ int main(int argc, char* argv[])
   //Verifies input
   startup(argc, argv, &server, &active_fd);
   Display_menu();
-
   //Main program loop
   while(1)
   {
@@ -44,8 +46,12 @@ int main(int argc, char* argv[])
   	maxfd = add_read_fd(&read_set, active_fd);
     //timeout.tv_sec = 5;
     //timeout.tv_usec = 0;
-
-  	select(maxfd+1, &read_set, (fd_set*) NULL, (fd_set*) NULL, NULL);
+  	if(!select(maxfd+1, &read_set, (fd_set*) NULL, (fd_set*) NULL, timeout)){
+      if(!server.inRing){
+        //DEAL_WITH_IT();
+        timeout = NULL;
+      }
+    }
 	 	//For user input
 		if(FD_ISSET(STDIN_FILENO, &read_set))
     {
@@ -67,14 +73,16 @@ int main(int argc, char* argv[])
           Display_menu();
     		break;
     		case 2:  //ENTRY i
-          if(!server.inRing)
-            printf("You must leave the Ring First!!\n");
-          else
-          {
-            active_fd.udp = init_UDPsv(&server);
-            active_fd.listen = init_TCP_Listen(&server);
-            Start_Search(server);
-          }
+        if(!server.inRing){
+          entry_i(&server);
+          active_fd.udp = init_UDPcl(&server, &udp_addr);
+          create_msg(buff, server, "EFND");
+          send_udp(active_fd.udp, buff, udp_addr->ai_addr, udp_addr->ai_addrlen);
+          udp_timeout.tv_sec = 5;
+          udp_timeout.tv_usec = 0;
+          timeout = &udp_timeout;
+        }
+
     		break;
     		case 3:
           if(!server.inRing)
@@ -113,7 +121,7 @@ int main(int argc, char* argv[])
             printf("You must enter in a Ring First!!\n");
           else
           {
-            Start_Search(server);
+            Start_Search(buff,server);
             printf("Encontra:%s\n",buff);
             Find_key(server,buff, active_fd);
             memset(buff,'\0',50);
@@ -136,17 +144,55 @@ int main(int argc, char* argv[])
     /////////////////////////////////////
 
 		//For UDP message received
-
-		if(server.inRing && FD_ISSET(active_fd.udp, &read_set))
+		if(active_fd.udp && FD_ISSET(active_fd.udp, &read_set))
 		{
-			//usado para testar, dps vai fora
-			recvfrom(active_fd.udp, buff, 50, 0, (struct sockaddr*)&addr,&addrlen);
-			printf("%s\n", buff);
-      if(strstr(buff,"ENFD ")!=NULL)
+      if(!server.inRing)
       {
-        //Fazer a mensagem
-        //Invocar findk com atencao as mudanças q sejam precisas Fazer
-        //Receber a chave e reenviar por udp
+        memset(buff,'\0',50);
+        recvfrom(active_fd.udp, buff, 50, 0, NULL, NULL);
+        printf("received udp %s\n", buff);
+        timeout = NULL;
+        close(active_fd.udp);
+        if(parse_EKEY(buff, &server)==-1)
+        {
+          clrscreen();
+          printf("--Key already taken, try again!--\n");
+          printf("(Press Enter to go to Main Menu)\n");
+          active_fd.udp=0;
+        }
+        else
+        {
+          active_fd.udp = init_UDPsv(&server);
+          active_fd.listen = init_TCP_Listen(&server);
+          active_fd.next = init_TCP_connect(server.Next_info.IP,server.Next_info.port); //connects to successor
+          //Sends the first message to the successor
+          create_msg(buff, server, "NEW");
+          send_message(active_fd.next, buff);
+          server.inRing = true;
+        }
+      }
+      else
+      {
+        memset(buff,'\0',50);
+        recvfrom(active_fd.udp, buff, 50, 0, (struct sockaddr*)&addr, &addrlen);
+        printf("received udp: %s\n", buff);
+        strtok(buff," ");
+        sscanf(strtok(NULL,"\0"),"%d",&udp_key);
+        memset(buff,'\0', 50);
+        sprintf(buff,"FND %d %d %s %s\n",udp_key, server.key, server.Myinfo.IP, server.Myinfo.port);
+        switch(Find_key(server, buff, active_fd)){
+          case 1://a chave esta logo neste servidor
+            memset(buff,'\0', 50);
+            sprintf(buff,"EKEY %d %d %s %s",udp_key, server.key, server.Myinfo.IP, server.Myinfo.port);
+            send_udp(active_fd.udp, buff, (struct sockaddr*)&addr, addrlen);
+          break;
+          case 2://a chave esta no sucessor
+            memset(buff,'\0', 50);
+            sprintf(buff,"EKEY %d %d %s %s",udp_key, server.succ_key, server.Next_info.IP, server.Next_info.port);
+            send_udp(active_fd.udp, buff, (struct sockaddr*)&addr, addrlen);
+          break;
+
+        }
       }
 		}
 
@@ -162,14 +208,26 @@ int main(int argc, char* argv[])
       if(!get_message(active_fd.next,buff))
       {
         close(active_fd.next);
+
         printf("Vi te a sair Cafagestji\n");
         //CLEAN SECOND SUCC
         strcpy(server.Next_info.port, server.SecondNext_info.port);
         server.succ_key=server.second_succ_key;
-        active_fd.next = init_TCP_connect(server.Next_info.IP,server.Next_info.port);
-        create_msg(buff, server, "SUCC");
-        send_message(active_fd.prev,buff);
-        send_message(active_fd.next,"SUCCCONF\n");
+        //Ver melhor condições de saída
+
+        if(strstr(server.Next_info.port,server.Myinfo.port)!=NULL && strstr(server.Next_info.IP,server.Myinfo.IP)!=NULL)
+        {
+          active_fd.next=0;
+        }
+        else
+        {
+          printf("Foi onde nao querias\n");
+          printf("%s %s %s %s\n",server.Next_info.port,server.Myinfo.port,server.Next_info.IP,server.Myinfo.IP);
+          active_fd.next = init_TCP_connect(server.Next_info.IP,server.Next_info.port);
+          create_msg(buff, server, "SUCC");
+          send_message(active_fd.prev,buff);
+          send_message(active_fd.next,"SUCCCONF\n");
+        }
 
       }
       //Let's receive the Second successor
@@ -199,7 +257,6 @@ int main(int argc, char* argv[])
       {
         close(active_fd.prev);
         active_fd.prev=0;
-        printf("Vi te a sair Cafagestji\n");
       }
 
       if(strstr(buff,"FND ")!=NULL)
@@ -219,13 +276,6 @@ int main(int argc, char* argv[])
           {
             active_fd.prev=active_fd.temp;
             active_fd.temp=0;
-          }
-          else
-          {
-            printf("o meu prev saiu\n");
-            close(active_fd.prev);
-            active_fd.prev=active_fd.temp;
-            active_fd.temp=0;
             create_msg(buff,server, "SUCC");
             send_message(active_fd.prev, buff);
           }
@@ -238,7 +288,6 @@ int main(int argc, char* argv[])
         {
           //Send info (of his new succ) to current prev, before switching*/
           //Assume the new connection as predecessor and breaks up with the previous pred
-          strcat(buff,"\n"); //<--ITS NEEDED ONLY IN THIS CASE. WILL WORK ON IT LATER
           send_message(active_fd.prev, buff);
           close(active_fd.prev);
           active_fd.prev = active_fd.temp;
@@ -270,14 +319,16 @@ int main(int argc, char* argv[])
         Show_where_is_key(buff);
         close(active_fd.temp);
         active_fd.temp=0;
+        create_EKEY(buff, udp_key);
+        //printf("%s", buff);
+        send_udp(active_fd.udp, buff, (struct sockaddr*)&addr, addrlen);
       }
       else
       {
         printf("unexpected message: abort\n");
-        /*if(active_fd.prev == active_fd.temp)
-          active_fd.prev = 0;*/
+        if(active_fd.prev == active_fd.temp)
+          active_fd.prev = 0;
         close(active_fd.temp);
-        active_fd.temp=0;
       }
     }
   }
