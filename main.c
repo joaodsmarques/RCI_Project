@@ -19,6 +19,7 @@ Obrigado!
 int main(int argc, char* argv[])
 {
   int maxfd = 0;
+  int count = 0;
   int udp_key;
   char buff[50];
   struct addrinfo* udp_addr;
@@ -48,8 +49,21 @@ int main(int argc, char* argv[])
     //timeout.tv_usec = 0;
   	if(!select(maxfd+1, &read_set, (fd_set*) NULL, (fd_set*) NULL, timeout)){
       if(!server.inRing){
-        //DEAL_WITH_IT();
-        timeout = NULL;
+        if(!(count++)){
+          create_msg(buff, server, "EFND");
+          send_udp(active_fd.udp, buff, udp_addr->ai_addr, udp_addr->ai_addrlen);
+          udp_timeout.tv_sec = 5;
+          udp_timeout.tv_usec = 0;
+          timeout = &udp_timeout;
+        }
+        else{
+          printf("connection timed out\n");
+          close(active_fd.udp);
+          active_fd.udp=0;
+          count=0;
+          timeout=NULL;
+          printf("press enter to continue\n");
+        }
       }
     }
 	 	//For user input
@@ -108,7 +122,6 @@ int main(int argc, char* argv[])
     		case 4://LEAVE
         if(server.inRing){
           close_all(&active_fd, &server);
-          printf("%d\n", server.inRing);
         }
         clrscreen();
         Display_menu();
@@ -130,8 +143,10 @@ int main(int argc, char* argv[])
     		case 7:
           if(server.inRing)
             printf("You must leave the Ring First!!\n");
-          else
+          else{
+            close_all(&active_fd, &server);
             exit(0);
+          }
     		break;
         default:
         clrscreen();
@@ -149,16 +164,15 @@ int main(int argc, char* argv[])
       if(!server.inRing)
       {
         memset(buff,'\0',50);
-        recvfrom(active_fd.udp, buff, 50, 0, NULL, NULL);
-        printf("received udp %s\n", buff);
+        recv_udp(active_fd.udp, buff, NULL, NULL);
         timeout = NULL;
         close(active_fd.udp);
+        active_fd.udp=0;
         if(parse_EKEY(buff, &server)==-1)
         {
           clrscreen();
           printf("--Key already taken, try again!--\n");
           printf("(Press Enter to go to Main Menu)\n");
-          active_fd.udp=0;
         }
         else
         {
@@ -174,8 +188,7 @@ int main(int argc, char* argv[])
       else
       {
         memset(buff,'\0',50);
-        recvfrom(active_fd.udp, buff, 50, 0, (struct sockaddr*)&addr, &addrlen);
-        printf("received udp: %s\n", buff);
+        recv_udp(active_fd.udp, buff, (struct sockaddr*)&addr, &addrlen);
         strtok(buff," ");
         sscanf(strtok(NULL,"\0"),"%d",&udp_key);
         memset(buff,'\0', 50);

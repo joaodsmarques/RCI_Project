@@ -43,7 +43,8 @@ int new_i(){
     if(key <= 0 || key> RING_SIZE)
       printf("Key must be between the server limits(0-%d)\n",RING_SIZE);
 
-    fgets(buffer, VETOR_SIZE, stdin);
+    if(!fgets(buffer, VETOR_SIZE, stdin))
+      exit(1);
 
   }while (sscanf(buffer,"%d", &key) != 1 ||  key <= 0 || key > RING_SIZE);
   return key;
@@ -60,7 +61,8 @@ void sentry(all_info* sv_info){
     if(key <= 0 || key> RING_SIZE)
       printf("Key must be between the server limits(0-%d)\n",RING_SIZE);
 
-    fgets(buffer, VETOR_SIZE, stdin);
+    if(!fgets(buffer, VETOR_SIZE, stdin))
+      exit(1);
 
   }while (sscanf(buffer,"%d", &key) != 1 ||  key <= 0 || key > RING_SIZE);
   sv_info->succ_key=key;
@@ -69,7 +71,8 @@ void sentry(all_info* sv_info){
   printf("Enter successor IP:\n");
   do{
     key=0;
-    fgets(buffer, IP_SIZE, stdin);
+    if(!fgets(buffer, IP_SIZE, stdin))
+      exit(1);
     //IP always has dots
     if(strstr(buffer,".")==NULL)
       key=-1;
@@ -88,7 +91,8 @@ void sentry(all_info* sv_info){
   printf("Enter successor Port:\n");
   do{
     key=0;
-    fgets(buffer, PORT_SIZE, stdin);
+    if(!fgets(buffer, PORT_SIZE, stdin))
+      exit(1);
     //Port limits
     if(sscanf(buffer,"%d", &key) < 1 ||  key <= 1024 || key > 64000)
       key=-1;
@@ -105,10 +109,11 @@ void entry_i(all_info* sv_info){
   char buffer[VETOR_SIZE];
   sv_info->key=new_i();
 
-  printf("Enter successor IP:\n");
+  printf("Enter IP:\n");
   do{
     key=0;
-    fgets(buffer, IP_SIZE, stdin);
+    if(!fgets(buffer, IP_SIZE, stdin))
+      exit(1);
     //IP always has dots
     if(strstr(buffer,".")==NULL)
       key=-1;
@@ -123,10 +128,11 @@ void entry_i(all_info* sv_info){
   }while(key==-1);
   strcpy(sv_info->Next_info.IP,strtok(buffer, "\n"));
 
-  printf("Enter recving Port:\n");
+  printf("Enter Port:\n");
   do{
     key=0;
-    fgets(buffer, PORT_SIZE, stdin);
+    if(!fgets(buffer, PORT_SIZE, stdin))
+      exit(1);
     //Port limits
     if(sscanf(buffer,"%d", &key) < 1 ||  key <= 1024 || key > 64000)
       key=-1;

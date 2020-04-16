@@ -17,6 +17,7 @@ int init_UDPcl(all_info*, struct addrinfo**);
 int init_TCP_Listen(all_info*);
 int init_TCP_connect(char*, char*);
 void send_udp(int, char*, struct sockaddr*, socklen_t);
+void recv_udp(int, char*, struct sockaddr*, socklen_t*);
 void send_message(int, const char*);
 int get_incoming(int);
 int get_message(int,char*);

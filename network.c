@@ -187,8 +187,17 @@ printf("got it\n");
 
 void send_udp(int fd, char* msg, struct sockaddr* addr, socklen_t addrlen){
 
-  sendto(fd, msg, strlen(msg),0, addr, addrlen);
+  if(sendto(fd, msg, strlen(msg),0, addr, addrlen)==-1)
+    exit(1);
   printf("sent udp: %s\n", msg);
+}
+
+
+void recv_udp(int fd, char* msg, struct sockaddr* addr, socklen_t* addrlen){
+
+  if(recvfrom(fd, msg, 50, 0, addr, addrlen)==-1)
+    exit(1);
+  printf("read udp: %s\n", msg);
 }
 
 
@@ -231,7 +240,7 @@ int get_message(int fd, char* msg){
   bytes_read = read(fd, buffer, nbytes);
   if(bytes_read == -1)
   {
-    printf("didnt read,ERROR\n");
+    printf("ERROR\n");
     free(buffer);
     close(fd);
     return 0;
